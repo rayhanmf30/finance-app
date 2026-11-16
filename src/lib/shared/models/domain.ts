@@ -1,6 +1,8 @@
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 export type CategoryType = 'INCOME' | 'EXPENSE';
 export type WalletType = 'CASH' | 'BANK' | 'EWALLET' | 'CREDIT_CARD';
+export type BudgetPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+export type BudgetStatusType = 'SAFE' | 'WARNING' | 'EXCEEDED';
 
 export interface Wallet {
 	id: string;
@@ -12,9 +14,9 @@ export interface Wallet {
 
 export interface Category {
 	id: string;
+	parentId: string | null;
 	name: string;
 	type: CategoryType;
-	parentId: string | null;
 	color: string;
 }
 
@@ -51,11 +53,38 @@ export interface CashflowSummary {
 }
 
 export interface CategoryBreakdown {
-	categoryId: string;
+	categoryId: string | null;
 	categoryName: string;
 	color: string;
 	total: number;
 	percentage: number;
+}
+
+export interface BudgetStatusRow {
+	budgetId: string;
+	categoryId: string | null;
+	categoryName: string;
+	periodType: BudgetPeriodType;
+	periodKey: string;
+	limitAmount: number;
+	spentAmount: number;
+	remainingAmount: number;
+	usagePercentage: number;
+	status: BudgetStatusType;
+}
+
+export interface BudgetInput {
+	categoryId: string | null;
+	periodType: BudgetPeriodType;
+	limitAmount: number;
+	warningThresholdPct: number;
+}
+
+export interface DashboardData {
+	summary: CashflowSummary;
+	breakdown: CategoryBreakdown[];
+	totalBalance: number;
+	budgets: BudgetStatusRow[];
 }
 
 export interface ReceiptItem {

@@ -4,48 +4,66 @@
 	import { transactionStore } from '#lib/features/transactions/transaction.store.svelte';
 	import { dashboardStore } from '#lib/features/dashboard/dashboard.store.svelte';
 	import { transactionService } from '#lib/features/transactions/services/transaction.service';
-	import type { TransactionInput } from '#lib/shared/models/domain';
+	import type { Category, TransactionInput, Wallet } from '#lib/shared/models/domain';
 	import TransactionList from '#lib/features/transactions/components/TransactionList.svelte';
 	import TransactionForm from '#lib/features/transactions/components/TransactionForm.svelte';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
 
 	let showForm = $state(false);
-
-	const wallets = transactionService.getWallets();
-	const categories = transactionService.getCategories();
+	let wallets = $state<Wallet[]>([]);
+	let categories = $state<Category[]>([]);
+	let actionError = $state<string | null>(null);
 
 	$effect(() => {
-		void transactionStore.filter.month;
-		void transactionStore.filter.query;
+		transactionStore.filter.month;
+		transactionStore.filter.query;
 		transactionStore.refresh();
+		loadReferenceData();
 	});
 
+	async function loadReferenceData() {
+		[wallets, categories] = await Promise.all([
+			transactionService.getWallets(),
+			transactionService.getCategories()
+		]);
+	}
+
 	async function handleSubmit(input: TransactionInput) {
-		await transactionService.create(input);
-		showForm = false;
-		await transactionStore.refresh();
-		dashboardStore.refresh();
+		actionError = null;
+		try {
+			await transactionService.create(input);
+			showForm = false;
+			await transactionStore.refresh();
+			dashboardStore.refresh();
+		} catch {
+			actionError = 'Gagal menyimpan transaksi.';
+		}
 	}
 
 	async function handleDelete(id: string) {
-		await transactionStore.remove(id);
-		dashboardStore.refresh();
+		actionError = null;
+		try {
+			await transactionStore.remove(id);
+			dashboardStore.refresh();
+		} catch {
+			actionError = 'Gagal menghapus transaksi.';
+		}
 	}
 </script>
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
-		<h1 class="text-xl font-bold text-slate-900">
+		<h1 class="text-xl font-bold text-slate-900 sm:text-2xl">
 			Riwayat Transaksi — {formatMonthYear(transactionStore.filter.month)}
 		</h1>
 		<Button variant="primary" onclick={() => (showForm = true)}>+ Tambah Transaksi</Button>
 	</div>
 
 	<div class="flex flex-wrap gap-3">
-		<div class="w-48">
+		<div class="w-44">
 			<Input label="Bulan" type="month" bind:value={transactionStore.filter.month} />
 		</div>
-		<div class="min-w-64 flex-1">
+		<div class="min-w-56 flex-1">
 			<Input
 				label="Cari"
 				type="search"
@@ -55,8 +73,10 @@
 		</div>
 	</div>
 
-	{#if transactionStore.error}
-		<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{transactionStore.error}</p>
+	{#if transactionStore.error || actionError}
+		<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+			{transactionStore.error ?? actionError}
+		</p>
 	{/if}
 
 	<div class="rounded-xl bg-white px-5 py-2 shadow-sm ring-1 ring-slate-200">

@@ -7,20 +7,20 @@ class DashboardStore {
 	breakdown = $state<CategoryBreakdown[]>([]);
 	totalBalance = $state(0);
 	loading = $state(false);
+	error = $state<string | null>(null);
 	month = $state(currentMonth());
 
 	async refresh(): Promise<void> {
 		this.loading = true;
+		this.error = null;
 		try {
 			const [year, month] = this.month.split('-').map(Number);
-			const [summary, breakdown, totalBalance] = await Promise.all([
-				dashboardService.getCashflowSummary(year, month),
-				dashboardService.getCategoryBreakdown(year, month),
-				dashboardService.getTotalBalance()
-			]);
-			this.summary = summary;
-			this.breakdown = breakdown;
-			this.totalBalance = totalBalance;
+			const data = await dashboardService.getDashboard(year, month);
+			this.summary = data.summary;
+			this.breakdown = data.breakdown;
+			this.totalBalance = data.totalBalance;
+		} catch {
+			this.error = 'Gagal memuat ringkasan. Pastikan backend database berjalan.';
 		} finally {
 			this.loading = false;
 		}

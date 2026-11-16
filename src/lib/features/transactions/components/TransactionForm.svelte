@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import type { Category, TransactionInput, TransactionType, Wallet } from '#lib/shared/models/domain';
 	import { Button } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
@@ -17,8 +16,12 @@
 	let amount = $state<number>(0);
 	let date = $state(new Date().toISOString().slice(0, 10));
 	let categoryId = $state('');
-	let walletId = $state(untrack(() => wallets[0]?.id ?? ''));
+	let walletId = $state('');
 	let note = $state('');
+
+	$effect(() => {
+		if (!walletId && wallets.length > 0) walletId = wallets[0].id;
+	});
 
 	const visibleCategories = $derived(categories.filter((c) => c.type === type));
 
