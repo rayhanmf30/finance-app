@@ -1,10 +1,16 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import { page } from '$app/state';
 	import '../app.css';
 	import { authService } from '#lib/core/auth/auth.service.svelte';
 
 	let { children }: { children: Snippet } = $props();
+
+	onMount(() => {
+		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+			navigator.serviceWorker.register('/sw.js');
+		}
+	});
 
 	interface NavLink {
 		href: string;
@@ -25,9 +31,9 @@
 </svelte:head>
 
 <div class="mx-auto flex min-h-screen max-w-4xl flex-col px-4">
-	<header class="flex items-center justify-between py-4">
+	<header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4">
 		<a href="/" class="text-lg font-bold text-indigo-600">💰 FinanceApp</a>
-		<nav class="flex items-center gap-1">
+		<nav class="flex flex-wrap items-center gap-1">
 			{#each links as link (link.href)}
 				<a
 					href={link.href}
@@ -52,7 +58,10 @@
 		</nav>
 	</header>
 
-	<main class="flex-1 py-4">
+	<main
+		class="flex-1 py-4"
+		style="padding-bottom: max(1rem, env(safe-area-inset-bottom));"
+	>
 		{@render children()}
 	</main>
 

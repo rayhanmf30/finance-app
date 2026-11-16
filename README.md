@@ -34,6 +34,21 @@ src/
 - **Service Layer:** seluruh logika bisnis ada di `*.service.ts`; komponen Svelte fokus pada tampilan.
 - **OCR Pluggable:** `core/ocr` mendefinisikan `OcrProvider`; implementasi mock siap diganti provider Vision/OCR nyata (pemanggilan API key wajib di backend).
 
+## Progressive Web App (PWA)
+
+Aplikasi dapat di-*install* ke home screen (Android/iOS/desktop):
+
+- `static/manifest.webmanifest` — metadata installable (standalone, tema indigo, ikon 192/512 + maskable).
+- `static/sw.js` — service worker tanpa dependensi: *cache-first* untuk aset immutable, *network-first* untuk navigasi dengan fallback offline ke cache.
+- Registrasi service worker di `src/routes/+layout.svelte` (hanya aktif pada build produksi).
+
+## Responsivitas
+
+- Layout fluid (`max-w-4xl`) dengan grid yang menyesuaikan: 1 kolom di HP, 3 kolom kartu metrik mulai `sm`, 2 kolom konten mulai `lg`.
+- Header dan kontrol memakai `flex-wrap` agar tidak overflow di layar sempit.
+- Modal review resi menumpuk (gambar di atas, formulir di bawah) di layar kecil.
+- `viewport-fit=cover` + `env(safe-area-inset-*)` untuk perangkat berponi/notch saat mode standalone.
+
 ## Fitur
 
 - **Dashboard:** Total saldo, pemasukan & pengeluaran bulan berjalan, grafik pengeluaran per kategori.

@@ -17,8 +17,8 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex items-center justify-between">
-		<h1 class="text-xl font-bold text-slate-900">Ringkasan {formatMonthYear(dashboardStore.month)}</h1>
+	<div class="flex flex-wrap items-center justify-between gap-2">
+		<h1 class="text-xl font-bold text-slate-900 sm:text-2xl">Ringkasan {formatMonthYear(dashboardStore.month)}</h1>
 		<a
 			href="/scan"
 			class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
