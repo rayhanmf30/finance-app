@@ -2,7 +2,7 @@ const CACHE_NAME = 'financeapp-v1';
 const CORE_ASSETS = [
 	'/',
 	'/transactions',
-	'/scan',
+	'/transactions/new',
 	'/manifest.webmanifest',
 	'/favicon.svg',
 	'/icons/icon-192.png',
