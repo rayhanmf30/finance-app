@@ -27,6 +27,9 @@ export const adminService = {
 	): Promise<AdminUser> {
 		return httpClient.patch<AdminUser>(`/api/admin/users/${id}`, body);
 	},
+	async changePassword(id: string, newPassword: string): Promise<void> {
+		await httpClient.patch(`/api/admin/users/${id}/password`, { newPassword });
+	},
 
 	// ---- Categories ----
 	async listCategories(): Promise<AdminCategory[]> {

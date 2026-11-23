@@ -25,6 +25,9 @@
 	let searchQuery = $state('');
 	let blockTarget = $state<AdminUser | null>(null);
 	let blockReason = $state('');
+	let passwordTarget = $state<AdminUser | null>(null);
+	let newPassword = $state('');
+	let showPassword = $state(false);
 
 	// ---- Kategori ----
 	let categories = $state<AdminCategory[]>([]);
@@ -133,6 +136,30 @@
 			await adminService.updateUser(u.id, { role });
 			await loadUsers();
 		}, `${u.name} ${verb}.`);
+	}
+
+	function openPasswordModal(u: AdminUser) {
+		passwordTarget = u;
+		newPassword = '';
+		showPassword = false;
+	}
+
+	function submitPassword() {
+		if (acting || !passwordTarget) return;
+		const target = passwordTarget;
+		if (
+			newPassword.length < 8 ||
+			!/[a-zA-Z]/.test(newPassword) ||
+			!/[0-9]/.test(newPassword)
+		) {
+			error = 'Password minimal 8 karakter dan mengandung huruf serta angka.';
+			return;
+		}
+		passwordTarget = null;
+		void withAction(async () => {
+			await adminService.changePassword(target.id, newPassword);
+			newPassword = '';
+		}, `Password akun ${target.name} berhasil diganti.`);
 	}
 
 	// ---- Kategori actions ----
@@ -447,6 +474,48 @@
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (blockTarget = null)}>Batal</Button>
 				<Button type="submit" variant="danger" disabled={acting}>Blokir</Button>
+			</div>
+		</form>
+	</Modal>
+{/if}
+
+<!-- Modal ganti password -->
+{#if passwordTarget}
+	<Modal title="Ganti password akun {passwordTarget.name}" onclose={() => (passwordTarget = null)}>
+		<form
+			class="space-y-4"
+			onsubmit={(e) => {
+				e.preventDefault();
+				submitPassword();
+			}}
+		>
+			<label class="block">
+				<span class="mb-1 block text-sm font-medium text-slate-700">Password baru</span>
+				<div class="relative">
+					<input
+						type={showPassword ? 'text' : 'password'}
+						bind:value={newPassword}
+						required
+						minlength="8"
+						autocomplete="new-password"
+						placeholder="Min. 8 karakter, huruf + angka"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-16 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					/>
+					<button
+						type="button"
+						class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+						onclick={() => (showPassword = !showPassword)}
+					>
+						{showPassword ? 'Sembunyi' : 'Lihat'}
+					</button>
+				</div>
+			</label>
+			<p class="text-sm text-slate-500">
+				Password baru segera aktif tanpa perlu password lama. Sampaikan password ini kepada pengguna lewat jalur aman.
+			</p>
+			<div class="flex justify-end gap-2">
+				<Button variant="ghost" onclick={() => (passwordTarget = null)}>Batal</Button>
+				<Button type="submit" disabled={acting}>Simpan Password</Button>
 			</div>
 		</form>
 	</Modal>
