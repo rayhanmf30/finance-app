@@ -18,7 +18,7 @@ Backend memakai endpoint API SvelteKit (`src/routes/api/`) yang berbicara langsu
 
 ```sh
 docker compose up -d db        # PostgreSQL 16 + schema + seed data demo otomatis
-cp .env.example .env           # DATABASE_URL & DEMO_USER_ID
+cp .env.example .env           # DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DEMO_USER_ID
 npm run dev
 ```
 
@@ -37,6 +37,49 @@ npm run dev
 | `/api/dashboard/summary` | GET | Cashflow, breakdown kategori, total saldo, status budget |
 | `/api/budgets` | GET/POST | Status budget real-time & buat aturan budget |
 | `/api/receipts/parse` | POST | Ekstraksi struk (multipart field `receipt`) |
+| `/api/health` | GET | Cek konektivitas aplikasi + database (untuk verifikasi deployment) |
+
+### Deployment: Supabase + Vercel
+
+Adapter build adalah `@sveltejs/adapter-vercel` — semua endpoint `/api/*` berjalan sebagai Vercel Functions.
+
+**1. Buat database di Supabase**
+
+- Buat project baru di [supabase.com](https://supabase.com).
+- Jalankan skema: **SQL Editor** → tempel seluruh isi `server/schema.sql` → Run. (Opsional: jalankan `server/seed.sql` untuk data demo.)
+
+**2. Ambil parameter koneksi**
+
+Koneksi memakai env variable terpisah, bukan satu connection string. Ambil datanya dari **Project Settings → Database → Connection string → URI**. Untuk Vercel (serverless), pakai **Connection pooling** (transaction pooler, port `6543`):
+
+- Host: `aws-0-<region>.pooler.supabase.com` (pooler) atau `db.<project-ref>.supabase.co` (direct)
+- Port: `6543` untuk pooler (direkomendasikan untuk Vercel) atau `5432` untuk direct
+- User: `postgres.<project-ref>` (format pooler Supabase)
+- Database: `postgres`
+
+> Driver `postgres.js` di aplikasi ini sudah dikonfigurasi dengan `prepare: false` — **wajib** untuk transaction pooler Supabase (PgBouncer). SSL juga diaktifkan otomatis untuk host non-lokal.
+
+**3. Daftarkan env var di Vercel**
+
+**Project Settings → Environment Variables** → tambahkan (aktifkan untuk Production, Preview, dan Development):
+
+| Variable | Contoh nilai untuk Supabase |
+| --- | --- |
+| `DB_HOST` | `aws-0-ap-southeast-1.pooler.supabase.com` |
+| `DB_PORT` | `6543` |
+| `DB_USER` | `postgres.<project-ref>` |
+| `DB_PASSWORD` | password database Supabase Anda |
+| `DB_NAME` | `postgres` |
+| `DB_SSL` | kosongkan (SSL otomatis aktif untuk host non-lokal) |
+| `DEMO_USER_ID` | `00000000-0000-0000-0000-000000000001` (opsional; ada fallback) |
+
+Jika password mengandung karakter khusus (`@`, `#`, `%`, dll.) tidak perlu di-encode karena dikirim sebagai env var terpisah, bukan bagian dari URL.
+
+- Redeploy agar env var terbaca.
+
+**4. Verifikasi**
+
+- Buka `https://<app>.vercel.app/api/health` → respons `{ "status": "ok", "database": "up" }` berarti aplikasi dan database terhubung.
 
 ### Logika Inti Server (`src/lib/server/`)
 
