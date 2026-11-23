@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
-import { demoUserId } from '#lib/server/auth';
 import { db } from '#lib/server/db';
+import { requireUserId } from '#lib/server/session';
 
-export async function GET() {
+export async function GET({ locals }) {
+	const userId = requireUserId(locals);
 	const rows = await db`
 		SELECT id, parent_id, name, type, color
 		FROM categories
-		WHERE user_id IS NULL OR user_id = ${demoUserId}
+		WHERE user_id IS NULL OR user_id = ${userId}
 		ORDER BY name
 	`;
 

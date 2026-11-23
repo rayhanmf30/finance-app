@@ -18,13 +18,13 @@ Backend memakai endpoint API SvelteKit (`src/routes/api/`) yang berbicara langsu
 
 ```sh
 docker compose up -d db        # PostgreSQL 16 + schema + seed data demo otomatis
-cp .env.example .env           # DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DEMO_USER_ID
+cp .env.example .env           # DB_* + AUTH_SECRET (untuk login)
 npm run dev
 ```
 
 - Skema lengkap (CHECK constraints, composite index, trigger `updated_at`) ada di `server/schema.sql`; data demo ada di `server/seed.sql`.
 - Variabel env dideklarasikan di `src/env.ts` (Kit 3 explicit env) dan dibaca via `$app/env/private`.
-- Selama modul auth belum aktif, seluruh query memakai user demo `DEMO_USER_ID`.
+- Data demo (user seed) tidak memiliki password; buat akun sendiri lewat halaman **Daftar**.
 
 ### API Endpoint
 
@@ -38,6 +38,10 @@ npm run dev
 | `/api/budgets` | GET/POST | Status budget real-time & buat aturan budget |
 | `/api/receipts/parse` | POST | Ekstraksi struk (multipart field `receipt`) |
 | `/api/health` | GET | Cek konektivitas aplikasi + database (untuk verifikasi deployment) |
+| `/api/auth/register` | POST | Daftar akun baru (nama, email, password) — otomatis login + dompet awal |
+| `/api/auth/login` | POST | Masuk (email + password) → session cookie httpOnly 7 hari |
+| `/api/auth/logout` | POST | Keluar (hapus cookie session) |
+| `/api/auth/me` | GET | Profil user yang sedang login |
 
 ### Deployment: Supabase + Vercel
 
@@ -71,7 +75,8 @@ Koneksi memakai env variable terpisah, bukan satu connection string. Ambil datan
 | `DB_PASSWORD` | password database Supabase Anda |
 | `DB_NAME` | `postgres` |
 | `DB_SSL` | kosongkan (SSL otomatis aktif untuk host non-lokal) |
-| `DEMO_USER_ID` | `00000000-0000-0000-0000-000000000001` (opsional; ada fallback) |
+| `AUTH_SECRET` | string acak ≥32 karakter — kunci signing cookie session (**wajib**). Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `DEMO_USER_ID` | tidak diperlukan lagi (kompatibilitas lama) |
 
 Jika password mengandung karakter khusus (`@`, `#`, `%`, dll.) tidak perlu di-encode karena dikirim sebagai env var terpisah, bukan bagian dari URL.
 
@@ -81,7 +86,12 @@ Jika password mengandung karakter khusus (`@`, `#`, `%`, dll.) tidak perlu di-en
 
 - Buka `https://<app>.vercel.app/api/health` → respons `{ "status": "ok", "database": "up" }` berarti aplikasi dan database terhubung.
 
-### Logika Inti Server (`src/lib/server/`)
+### Autentikasi & Isolasi Data per User
+
+- Registrasi: password di-hash dengan **scrypt** (Node crypto, tanpa dependensi) tersimpan di `users.password_hash`; user baru otomatis mendapat dompet **Dompet Tunai** dan memakai kategori sistem.
+- Session: cookie httpOnly `fa_session` berisi payload + signature **HMAC-SHA256** dengan kunci `AUTH_SECRET` — tanpa tabel session (stateless). Verifikasi dilakukan di `src/hooks.server.ts`, hasilnya di `event.locals.userId`.
+- Seluruh endpoint `/api/*` (kecuali auth & health) mewajibkan login (`requireUserId` → 401) dan memfilter query per `user_id`, sehingga transaksi dompet & budget **terpisah penuh antar user**.
+- Halaman `/login` dan `/register`; halaman privat diarahkan ke `/login` bila belum login; tombol **Keluar** di navigasi.
 
 - **`transactions.ts`** — penyimpanan atomik (`db.begin`): `SELECT ... FOR UPDATE` pada dompet, insert transaksi, update saldo per tipe (INCOME/EXPENSE/TRANSFER), lalu **warning engine** budget.
 - **Warning engine** — untuk EXPENSE, budget terkait (kategori transaksi + seluruh leluhur melalui recursive CTE, plus budget global) dievaluasi terhadap periode berjalan (`period.ts`: harian/minggu ISO/bulanan/tahunan). Jika pemakaian ≥ threshold atau > limit, `INSERT INTO budget_alerts ... ON CONFLICT (budget_id, period_key, alert_level) DO NOTHING` — anti-spam per periode.
