@@ -5,6 +5,7 @@
 	import { Button, Modal } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
+	import WalletSelect from '#lib/shared/components/WalletSelect.svelte';
 
 	interface Props {
 		extraction: ReceiptExtraction;
@@ -132,11 +133,7 @@
 				options={expenseCategories.map((c) => ({ value: c.id, label: c.name }))}
 				bind:value={categoryId}
 			/>
-			<Select
-				label="Dompet"
-				options={wallets.map((w) => ({ value: w.id, label: w.name }))}
-				bind:value={walletId}
-			/>
+			<WalletSelect wallets={wallets} bind:value={walletId} />
 
 			<div class="pt-1">
 				<Button type="submit" variant="primary" disabled={saving}>

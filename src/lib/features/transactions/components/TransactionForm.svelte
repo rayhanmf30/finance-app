@@ -3,6 +3,7 @@
 	import { Button } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
+	import WalletSelect from '#lib/shared/components/WalletSelect.svelte';
 
 	interface Props {
 		categories: Category[];
@@ -67,11 +68,7 @@
 
 	<Input label="Nominal" type="number" min="1" step="any" bind:value={amount} required />
 	<Input label="Tanggal" type="date" bind:value={date} required />
-	<Select
-		label="Dompet"
-		options={wallets.map((w) => ({ value: w.id, label: w.name }))}
-		bind:value={walletId}
-	/>
+	<WalletSelect wallets={wallets} bind:value={walletId} />
 	<Select
 		label="Kategori"
 		options={[
