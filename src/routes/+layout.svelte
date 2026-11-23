@@ -55,37 +55,43 @@
 {#if showApp}
 	<div class="mx-auto flex min-h-screen max-w-4xl flex-col px-4">
 		<header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4">
-			<a href="/" class="text-lg font-bold text-indigo-600">💰 FinanceApp</a>
-			<nav class="flex flex-wrap items-center gap-1">
+			<div class="flex flex-wrap items-center gap-1">
+				<a href="/" class="mr-2 text-lg font-bold text-indigo-600">💰 FinanceApp</a>
 				{#if authService.currentUser}
-					{#each navLinks as link (link.href)}
+					<nav class="flex flex-wrap items-center gap-1">
+						{#each navLinks as link (link.href)}
+							<a
+								href={link.href}
+								class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {active(link.href)
+									? 'bg-indigo-50 text-indigo-700'
+									: 'text-slate-600 hover:bg-slate-200'}"
+							>
+								{link.label}
+							</a>
+						{/each}
 						<a
-							href={link.href}
-							class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {active(link.href)
-								? 'bg-indigo-50 text-indigo-700'
-								: 'text-slate-600 hover:bg-slate-200'}"
+							href="/scan"
+							class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
 						>
-							{link.label}
+							Scan Resi
 						</a>
-					{/each}
-					<a
-						href="/scan"
-						class="ml-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-					>
-						Scan Resi
-					</a>
-					<span class="ml-3 hidden text-xs text-slate-400 sm:inline">
+					</nav>
+				{/if}
+			</div>
+			{#if authService.currentUser}
+				<div class="flex items-center gap-1">
+					<span class="hidden text-xs text-slate-400 sm:inline">
 						{authService.currentUser.name}
 					</span>
 					<button
 						type="button"
 						onclick={handleLogout}
-						class="ml-1 cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900"
+						class="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900"
 					>
 						Keluar
 					</button>
-				{/if}
-			</nav>
+				</div>
+			{/if}
 		</header>
 
 		<main
