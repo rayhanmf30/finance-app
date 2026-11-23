@@ -1,15 +1,17 @@
 import { error, json } from '@sveltejs/kit';
-import { demoUserId } from '#lib/server/auth';
 import { db } from '#lib/server/db';
 import { computeBudgetStatuses } from '#lib/server/transactions';
+import { requireUserId } from '#lib/server/session';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async () => {
-	const budgets = await computeBudgetStatuses(db, demoUserId, new Date());
+export const GET: RequestHandler = async ({ locals }) => {
+	const userId = requireUserId(locals);
+	const budgets = await computeBudgetStatuses(db, userId, new Date());
 	return json(budgets);
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	const userId = requireUserId(locals);
 	const body = await request.json();
 	const { categoryId, periodType, limitAmount, warningThresholdPct } = body ?? {};
 
@@ -29,14 +31,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	if (categoryId) {
 		const owned = await db`
-			SELECT 1 FROM categories WHERE id = ${categoryId} AND (user_id IS NULL OR user_id = ${demoUserId})
+			SELECT 1 FROM categories WHERE id = ${categoryId} AND (user_id IS NULL OR user_id = ${userId})
 		`;
 		if (owned.length === 0) throw error(400, 'Kategori tidak ditemukan.');
 	}
 
 	const rows = await db`
 		INSERT INTO budgets (user_id, category_id, period_type, limit_amount, warning_threshold_pct)
-		VALUES (${demoUserId}, ${categoryId ?? null}, ${periodType}, ${limit}, ${threshold})
+		VALUES (${userId}, ${categoryId ?? null}, ${periodType}, ${limit}, ${threshold})
 		RETURNING id
 	`;
 

@@ -1,12 +1,13 @@
 import { error, json } from '@sveltejs/kit';
-import { demoUserId } from '#lib/server/auth';
 import { parseReceipt } from '#lib/server/receipts';
+import { requireUserId } from '#lib/server/session';
 import type { RequestHandler } from './$types';
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_MB = 5;
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	const userId = requireUserId(locals);
 	let form: FormData;
 	try {
 		form = await request.formData();
@@ -25,6 +26,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		throw error(400, 'Ukuran maksimal 5MB.');
 	}
 
-	const extraction = await parseReceipt(demoUserId);
+	const extraction = await parseReceipt(userId);
 	return json(extraction);
 };
