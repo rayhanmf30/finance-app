@@ -42,6 +42,8 @@ export interface Wallet {
 	id: string;
 	name: string;
 	type: WalletType;
+	/** Label tipe dari tabel wallet_types (dikelola admin). */
+	typeLabel?: string;
 	currency: string;
 	currentBalance: number;
 }
