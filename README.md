@@ -37,6 +37,37 @@ npm run dev
 | `/api/dashboard/summary` | GET | Cashflow, breakdown kategori, total saldo, status budget |
 | `/api/budgets` | GET/POST | Status budget real-time & buat aturan budget |
 | `/api/receipts/parse` | POST | Ekstraksi struk (multipart field `receipt`) |
+| `/api/health` | GET | Cek konektivitas aplikasi + database (untuk verifikasi deployment) |
+
+### Deployment: Supabase + Vercel
+
+Adapter build adalah `@sveltejs/adapter-vercel` — semua endpoint `/api/*` berjalan sebagai Vercel Functions.
+
+**1. Buat database di Supabase**
+
+- Buat project baru di [supabase.com](https://supabase.com).
+- Jalankan skema: **SQL Editor** → tempel seluruh isi `server/schema.sql` → Run. (Opsional: jalankan `server/seed.sql` untuk data demo.)
+
+**2. Ambil connection string**
+
+**Project Settings → Database → Connection string → URI**. Untuk Vercel (serverless), pakai **Connection pooling** (port `6543`, transaction pooler):
+
+```text
+postgresql://postgres.<project-ref>:<PASSWORD>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
+```
+
+> Driver `postgres.js` di aplikasi ini sudah dikonfigurasi dengan `prepare: false` — **wajib** untuk transaction pooler Supabase (PgBouncer).
+
+**3. Daftarkan env var di Vercel**
+
+- **Project Settings → Environment Variables** → tambahkan:
+  - `DATABASE_URL` = connection string pooler di atas (aktifkan untuk Production, Preview, dan Development).
+  - `DEMO_USER_ID` = `00000000-0000-0000-0000-000000000001` (opsional; ada fallback default).
+- Redeploy agar env var terbaca.
+
+**4. Verifikasi**
+
+- Buka `https://<app>.vercel.app/api/health` → respons `{ "status": "ok", "database": "up" }` berarti aplikasi dan database terhubung.
 
 ### Logika Inti Server (`src/lib/server/`)
 
