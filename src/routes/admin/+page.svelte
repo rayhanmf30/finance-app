@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { authService } from '#lib/core/auth/auth.service.svelte';
 	import { adminService } from '#lib/features/admin/admin.service';
 	import { Button, Card, Modal } from '#lib/shared/components';
@@ -14,7 +14,13 @@
 		{ id: 'walletTypes', label: 'Tipe Dompet' }
 	];
 
-	let activeTab = $state<Tab>('users');
+	const VALID_TABS: Tab[] = ['users', 'categories', 'walletTypes'];
+
+	const activeTab = $derived<Tab>(
+		(VALID_TABS as string[]).includes(page.url.searchParams.get('tab') ?? '') && VALID_TABS.includes(page.url.searchParams.get('tab') as Tab)
+			? (page.url.searchParams.get('tab') as Tab)
+			: 'users'
+	);
 	let loading = $state(true);
 	let acting = $state(false);
 	let error = $state('');
@@ -79,17 +85,18 @@
 	}
 
 	function switchTab(tab: Tab) {
-		activeTab = tab;
-		loading = true;
-		void loadTab(tab);
+		void goto(`/admin?tab=${tab}`);
 	}
 
-	onMount(() => {
+	// Muat ulang data tiap tab berubah (termasuk saat dibuka dari tree sidebar).
+	$effect(() => {
 		if (!authService.isAdmin) {
 			void goto('/');
 			return;
 		}
-		void loadTab(activeTab);
+		const tab = activeTab;
+		loading = true;
+		void loadTab(tab);
 	});
 
 	async function withAction(fn: () => Promise<void>, successMessage: string) {
