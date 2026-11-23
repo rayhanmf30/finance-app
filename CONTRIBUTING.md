@@ -1,5 +1,17 @@
 # Panduan Kontribusi FinanceApp
 
+## Alur Kerja (Workflow)
+
+1. **Commit** — semua perubahan di-commit di branch `vibe` mengikuti format Conventional Commits di bawah.
+2. **Push** — setelah commit, push ke `origin/vibe`.
+3. **Pull Request** — setelah push, **wajib** memastikan ada pull request untuk branch `vibe`:
+   - bila belum ada → buat PR baru;
+   - bila sudah ada → siapkan update (commit baru otomatis masuk PR).
+4. **Komentar/deskripsi PR yang jelas** — deskripsi PR (atau komentar baru pada PR) wajib menjelaskan:
+   - daftar **fitur/perbaikan** yang dibuat (per commit, dengan type commit-nya);
+   - **cara verifikasi** yang sudah dilakukan (check, build, e2e);
+   - catatan khusus bila ada (migrasi DB, env baru, perubahan breaking).
+
 ## Aturan Branch
 
 - Semua perubahan dikerjakan di **satu branch bernama `vibe`** (bukan branch baru per fitur).
