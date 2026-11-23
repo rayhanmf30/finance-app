@@ -79,7 +79,7 @@
 			<img
 				src={previewUrl}
 				alt="Pratinjau struk"
-				class="max-h-72 w-full rounded-lg border border-slate-200 object-cover"
+				class="max-h-72 w-full rounded-lg border border-slate-200 dark:border-slate-700/60 object-cover"
 			/>
 		{/if}
 
@@ -89,7 +89,7 @@
 					type="button"
 					class="cursor-pointer rounded-lg border px-2 py-1.5 text-xs font-medium {mode === 'single'
 						? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-						: 'border-slate-200 text-slate-500'}"
+						: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
 					onclick={() => (mode = 'single')}
 				>
 					Satu transaksi
@@ -98,7 +98,7 @@
 					type="button"
 					class="cursor-pointer rounded-lg border px-2 py-1.5 text-xs font-medium {mode === 'items'
 						? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-						: 'border-slate-200 text-slate-500'}"
+						: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
 					onclick={() => (mode = 'items')}
 				>
 					Pecah per item
@@ -111,7 +111,7 @@
 			{#if mode === 'single'}
 				<Input label="Total" type="number" min="1" step="any" bind:value={total} required />
 			{:else}
-				<div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+				<div class="rounded-lg bg-slate-50 dark:bg-boxdark p-3 text-xs text-slate-600 dark:text-slate-300">
 					<p class="mb-2 font-semibold">Rincian item ({extraction.items.length})</p>
 					<ul class="space-y-1">
 						{#each extraction.items as item (item.name)}
@@ -121,7 +121,7 @@
 							</li>
 						{/each}
 					</ul>
-					<p class="mt-2 flex justify-between border-t border-slate-200 pt-2 font-semibold">
+					<p class="mt-2 flex justify-between border-t border-slate-200 dark:border-slate-700/60 pt-2 font-semibold">
 						<span>Total item</span>
 						<span>{formatCurrency(itemsTotal)}</span>
 					</p>

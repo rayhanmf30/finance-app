@@ -248,12 +248,12 @@
 
 <div class="mx-auto w-full max-w-5xl p-4 sm:p-6">
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-		<h1 class="text-xl font-bold text-slate-900 sm:text-2xl">Panel Admin</h1>
-		<div class="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
+		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">Panel Admin</h1>
+		<div class="flex flex-wrap gap-1 rounded-lg bg-slate-100 dark:bg-boxdark-2 p-1">
 			{#each tabs as tab (tab.id)}
 				<button
 					type="button"
-					class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors {activeTab === tab.id ? 'bg-white text-indigo-700 shadow' : 'text-slate-600 hover:text-slate-900'}"
+					class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors {activeTab === tab.id ? 'bg-white dark:bg-boxdark-2 text-indigo-700 shadow' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white dark:hover:text-white'}"
 					onclick={() => switchTab(tab.id)}
 				>
 					{tab.label}
@@ -270,7 +270,7 @@
 	{/if}
 
 	{#if loading}
-		<p class="text-sm text-slate-500">Memuat…</p>
+		<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Memuat…</p>
 	{:else if activeTab === 'users'}
 		<Card>
 			<form
@@ -284,13 +284,13 @@
 					type="search"
 					placeholder="Cari nama atau email…"
 					bind:value={searchQuery}
-					class="min-w-52 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="min-w-52 flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 				<Button type="submit" variant="secondary">Cari</Button>
 			</form>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
-					<thead class="text-xs text-slate-500 uppercase">
+					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
 						<tr>
 							<th class="px-2 py-2">Pengguna</th>
 							<th class="px-2 py-2">Role</th>
@@ -299,22 +299,22 @@
 							<th class="px-2 py-2 text-right">Aksi</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-slate-100">
+					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
 						{#each users as u (u.id)}
 							{@const isSelf = u.id === authService.currentUser?.id}
 							<tr>
 								<td class="px-2 py-3">
-									<p class="font-medium text-slate-900">{u.name}{isSelf ? ' (Anda)' : ''}</p>
-									<p class="text-xs text-slate-500">{u.email}</p>
+									<p class="font-medium text-slate-900 dark:text-white">{u.name}{isSelf ? ' (Anda)' : ''}</p>
+									<p class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{u.email}</p>
 								</td>
 								<td class="px-2 py-3">
 									<span
-										class="rounded-full px-2 py-0.5 text-xs font-semibold {u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}"
+										class="rounded-full px-2 py-0.5 text-xs font-semibold {u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 dark:bg-boxdark-2 text-slate-600 dark:text-slate-300'}"
 									>
 										{u.role === 'admin' ? 'Admin' : 'User'}
 									</span>
 								</td>
-								<td class="px-2 py-3 text-xs text-slate-500">
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
 									{u.transactionCount} transaksi · {u.walletCount} dompet · {u.budgetCount} budget
 								</td>
 								<td class="px-2 py-3">
@@ -328,7 +328,7 @@
 								<td class="px-2 py-3">
 									<div class="flex flex-wrap justify-end gap-1">
 										{#if isSelf}
-											<span class="px-2 text-xs text-slate-400">—</span>
+											<span class="px-2 text-xs text-slate-400 dark:text-metadark">—</span>
 										{:else if u.isBlocked}
 											<Button variant="secondary" onclick={() => unblock(u)}>Buka Blokir</Button>
 										{:else}
@@ -343,7 +343,7 @@
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500">Tidak ada pengguna.</td></tr>
+							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Tidak ada pengguna.</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -356,7 +356,7 @@
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
-					<thead class="text-xs text-slate-500 uppercase">
+					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
 						<tr>
 							<th class="px-2 py-2">Nama</th>
 							<th class="px-2 py-2">Tipe</th>
@@ -365,17 +365,17 @@
 							<th class="px-2 py-2 text-right">Aksi</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-slate-100">
+					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
 						{#each categories as c (c.id)}
 							{@const isSystem = c.ownerId === null}
 							<tr>
 								<td class="flex items-center gap-2 px-2 py-3">
 									<span class="h-3 w-3 shrink-0 rounded-full" style="background: {c.color ?? '#94a3b8'}"></span>
-									<span class="font-medium text-slate-900 {isSystem ? '' : 'pl-4'}">{c.name}</span>
+									<span class="font-medium text-slate-900 dark:text-white {isSystem ? '' : 'pl-4'}">{c.name}</span>
 								</td>
-								<td class="px-2 py-3 text-xs text-slate-600">{c.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}</td>
-								<td class="px-2 py-3 text-xs text-slate-500">{isSystem ? 'Sistem (seditable)' : 'Pengguna (read-only)'}</td>
-								<td class="px-2 py-3 text-xs text-slate-500">
+								<td class="px-2 py-3 text-xs text-slate-600 dark:text-slate-300">{c.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}</td>
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{isSystem ? 'Sistem (seditable)' : 'Pengguna (read-only)'}</td>
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
 									{c.transactionCount} transaksi · {c.childCount} sub-kategori
 								</td>
 								<td class="px-2 py-3">
@@ -390,13 +390,13 @@
 												Hapus
 											</Button>
 										{:else}
-											<span class="px-2 text-xs text-slate-400">—</span>
+											<span class="px-2 text-xs text-slate-400 dark:text-metadark">—</span>
 										{/if}
 									</div>
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500">Belum ada kategori.</td></tr>
+							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Belum ada kategori.</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -409,7 +409,7 @@
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
-					<thead class="text-xs text-slate-500 uppercase">
+					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
 						<tr>
 							<th class="px-2 py-2">Kode</th>
 							<th class="px-2 py-2">Label</th>
@@ -418,17 +418,17 @@
 							<th class="px-2 py-2 text-right">Aksi</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-slate-100">
+					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
 						{#each walletTypes as w (w.code)}
 							<tr>
-								<td class="px-2 py-3 font-mono text-xs text-slate-700">{w.code}</td>
-								<td class="px-2 py-3 font-medium text-slate-900">{w.label}</td>
+								<td class="px-2 py-3 font-mono text-xs text-slate-700 dark:text-slate-200">{w.code}</td>
+								<td class="px-2 py-3 font-medium text-slate-900 dark:text-white">{w.label}</td>
 								<td class="px-2 py-3">
-									<span class="rounded-full px-2 py-0.5 text-xs font-semibold {w.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}">
+									<span class="rounded-full px-2 py-0.5 text-xs font-semibold {w.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600 dark:text-slate-300'}">
 										{w.isActive ? 'Aktif' : 'Nonaktif'}
 									</span>
 								</td>
-								<td class="px-2 py-3 text-xs text-slate-500">{w.walletCount} dompet</td>
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.walletCount} dompet</td>
 								<td class="px-2 py-3">
 									<div class="flex flex-wrap justify-end gap-1">
 										<Button variant="secondary" onclick={() => openWalletEdit(w)}>Edit</Button>
@@ -442,7 +442,7 @@
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500">Belum ada tipe dompet.</td></tr>
+							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Belum ada tipe dompet.</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -462,15 +462,15 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Alasan pemblokiran (opsional)</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Alasan pemblokiran (opsional)</span>
 				<textarea
 					rows="3"
 					bind:value={blockReason}
 					placeholder="Contoh: tindakan mencurigakan"
-					class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				></textarea>
 			</label>
-			<p class="text-sm text-slate-500">Pengguna yang diblokir tidak bisa login atau memakai API sampai blokir dibuka.</p>
+			<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Pengguna yang diblokir tidak bisa login atau memakai API sampai blokir dibuka.</p>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (blockTarget = null)}>Batal</Button>
 				<Button type="submit" variant="danger" disabled={acting}>Blokir</Button>
@@ -490,7 +490,7 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Password baru</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Password baru</span>
 				<div class="relative">
 					<input
 						type={showPassword ? 'text' : 'password'}
@@ -499,7 +499,7 @@
 						minlength="8"
 						autocomplete="new-password"
 						placeholder="Min. 8 karakter, huruf + angka"
-						class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-16 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 pr-16 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 					/>
 					<button
 						type="button"
@@ -510,7 +510,7 @@
 					</button>
 				</div>
 			</label>
-			<p class="text-sm text-slate-500">
+			<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">
 				Password baru segera aktif tanpa perlu password lama. Sampaikan password ini kepada pengguna lewat jalur aman.
 			</p>
 			<div class="flex justify-end gap-2">
@@ -532,33 +532,33 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Nama</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama</span>
 				<input
 					type="text"
 					required
 					minlength="2"
 					maxlength="100"
 					bind:value={categoryForm.name}
-					class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 			</label>
 			{#if categoryModalMode === 'add'}
 				<div class="grid grid-cols-2 gap-3">
 					<label class="block">
-						<span class="mb-1 block text-sm font-medium text-slate-700">Tipe</span>
+						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Tipe</span>
 						<select
 							bind:value={categoryForm.type}
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 						>
 							<option value="EXPENSE">Pengeluaran</option>
 							<option value="INCOME">Pemasukan</option>
 						</select>
 					</label>
 					<label class="block">
-						<span class="mb-1 block text-sm font-medium text-slate-700">Kategori induk</span>
+						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Kategori induk</span>
 						<select
 							bind:value={categoryForm.parentId}
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 						>
 							<option value="">— Tidak ada —</option>
 							{#each systemCategories.filter((p) => !p.parentId && p.type === categoryForm.type) as p (p.id)}
@@ -569,8 +569,8 @@
 				</div>
 			{/if}
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Warna</span>
-				<input type="color" bind:value={categoryForm.color} class="h-10 w-20 cursor-pointer rounded border border-slate-300" />
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Warna</span>
+				<input type="color" bind:value={categoryForm.color} class="h-10 w-20 cursor-pointer rounded border border-slate-300 dark:border-slate-600" />
 			</label>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (categoryModalMode = null)}>Batal</Button>
@@ -591,24 +591,24 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Kode {walletModalMode === 'add' ? '(mis. INVESTASI)' : ''}</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Kode {walletModalMode === 'add' ? '(mis. INVESTASI)' : ''}</span>
 				<input
 					type="text"
 					required
 					bind:value={walletForm.code}
 					disabled={walletModalMode === 'edit'}
-					class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none disabled:bg-slate-100"
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm uppercase focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none disabled:bg-slate-100 dark:bg-boxdark-2"
 				/>
 			</label>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Label tampilan</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Label tampilan</span>
 				<input
 					type="text"
 					required
 					minlength="2"
 					maxlength="50"
 					bind:value={walletForm.label}
-					class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 			</label>
 			<div class="flex justify-end gap-2">

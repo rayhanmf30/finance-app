@@ -47,7 +47,7 @@
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1 class="text-xl font-bold text-slate-900 sm:text-2xl">
+		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
 			Ringkasan {formatMonthYear(dashboardStore.month)}
 		</h1>
 		<a
@@ -85,9 +85,9 @@
 	{/if}
 
 	<div class="grid gap-4 lg:grid-cols-2">
-		<section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+		<section class="rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
 			<div class="mb-4 flex items-center justify-between">
-				<h3 class="text-sm font-semibold text-slate-500">Status Anggaran</h3>
+				<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">Status Anggaran</h3>
 				<Button variant="secondary" onclick={() => (showBudgetForm = true)}>+ Atur Budget</Button>
 			</div>
 			{#if budgetStore.error}
@@ -96,15 +96,15 @@
 			<BudgetStatusCard rows={budgetStore.rows} loading={budgetStore.loading} />
 		</section>
 
-		<section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-			<h3 class="mb-4 text-sm font-semibold text-slate-500">Pengeluaran per Kategori</h3>
+		<section class="rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+			<h3 class="mb-4 text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">Pengeluaran per Kategori</h3>
 			<CashflowChart breakdown={dashboardStore.breakdown} />
 		</section>
 	</div>
 
-	<section class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+	<section class="rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
 		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-sm font-semibold text-slate-500">Transaksi Terakhir</h3>
+			<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">Transaksi Terakhir</h3>
 			<a href="/transactions" class="text-xs font-medium text-indigo-600 hover:underline">
 				Lihat semua
 			</a>

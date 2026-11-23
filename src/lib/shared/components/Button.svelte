@@ -13,9 +13,9 @@
 
 	const variants: Record<Variant, string> = {
 		primary: 'bg-indigo-600 text-white hover:bg-indigo-700',
-		secondary: 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50',
+		secondary: 'bg-white dark:bg-boxdark-2 text-slate-700 dark:text-slate-200 ring-1 ring-slate-300 dark:ring-slate-600 hover:bg-slate-50 dark:bg-boxdark dark:hover:bg-boxdark-2',
 		danger: 'bg-red-600 text-white hover:bg-red-700',
-		ghost: 'text-slate-600 hover:bg-slate-200'
+		ghost: 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
 	};
 
 	let { variant = 'primary', type = 'button', disabled = false, onclick, children }: Props =

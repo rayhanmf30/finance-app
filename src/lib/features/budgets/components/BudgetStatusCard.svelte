@@ -30,17 +30,17 @@
 </script>
 
 {#if loading}
-	<div class="h-20 animate-pulse rounded-lg bg-slate-100"></div>
+	<div class="h-20 animate-pulse rounded-lg bg-slate-100 dark:bg-boxdark-2"></div>
 {:else if rows.length === 0}
-	<p class="py-6 text-center text-sm text-slate-400">Belum ada aturan budget.</p>
+	<p class="py-6 text-center text-sm text-slate-400 dark:text-metadark">Belum ada aturan budget.</p>
 {:else}
 	<ul class="space-y-4">
 		{#each rows as row (row.budgetId)}
 			<li>
 				<div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-sm">
-					<span class="font-medium text-slate-700">
+					<span class="font-medium text-slate-700 dark:text-slate-200">
 						{row.categoryName}
-						<span class="text-xs font-normal text-slate-400">
+						<span class="text-xs font-normal text-slate-400 dark:text-metadark">
 							({periodLabels[row.periodType]} · {row.periodKey})
 						</span>
 					</span>
@@ -48,13 +48,13 @@
 						{row.status === 'SAFE' ? 'AMAN' : row.status === 'WARNING' ? 'PERINGATAN' : 'TERLAMPAUI'}
 					</span>
 				</div>
-				<div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+				<div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-boxdark-2">
 					<div
 						class="h-full rounded-full transition-all {barStyles[row.status]}"
 						style="width: {Math.min(Math.max(row.usagePercentage, 2), 100)}%"
 					></div>
 				</div>
-				<div class="mt-1 flex flex-wrap justify-between gap-1 text-xs text-slate-500">
+				<div class="mt-1 flex flex-wrap justify-between gap-1 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
 					<span>{formatCurrency(row.spentAmount)} / {formatCurrency(row.limitAmount)}</span>
 					<span>
 						{row.usagePercentage.toFixed(1)}%

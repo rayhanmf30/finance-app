@@ -37,47 +37,47 @@
 </svelte:head>
 
 <div class="mx-auto mt-10 max-w-md">
-	<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+	<div class="rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-boxdark-2 p-6 shadow-sm sm:p-8">
 		<div class="mb-6 text-center">
 			<div class="text-3xl">💰</div>
-			<h1 class="mt-2 text-xl font-bold text-slate-900">Buat Akun Baru</h1>
-			<p class="mt-1 text-sm text-slate-500">Anda akan mendapat dompet awal & kategori standar</p>
+			<h1 class="mt-2 text-xl font-bold text-slate-900 dark:text-white">Buat Akun Baru</h1>
+			<p class="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Anda akan mendapat dompet awal & kategori standar</p>
 		</div>
 
 		<form onsubmit={submit} class="space-y-4">
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Nama</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama</span>
 				<input
 					type="text"
 					required
 					autocomplete="name"
 					placeholder="Nama lengkap"
 					bind:value={name}
-					class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 			</label>
 
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Email</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
 				<input
 					type="email"
 					required
 					autocomplete="email"
 					placeholder="nama@email.com"
 					bind:value={email}
-					class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 			</label>
 
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700">Password</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
 				<input
 					type="password"
 					required
 					autocomplete="new-password"
 					placeholder="Minimal 8 karakter, huruf + angka"
 					bind:value={password}
-					class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 			</label>
 
@@ -90,7 +90,7 @@
 			</Button>
 		</form>
 
-		<p class="mt-6 text-center text-sm text-slate-600">
+		<p class="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
 			Sudah punya akun?
 			<a href="/login" class="font-medium text-indigo-600 hover:text-indigo-700">Masuk</a>
 		</p>
