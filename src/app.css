@@ -1,11 +1,18 @@
 @import 'tailwindcss';
 
+/* Mode gelap manual via class .dark di <html> (di-toggle oleh theme service). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
 	--font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+	/* Palet khas TailAdmin */
+	--color-boxdark: #1c2434;
+	--color-boxdark-2: #232b3b;
+	--color-metadark: #8a99af;
 }
 
 body {
-	@apply bg-slate-100 text-slate-900 antialiased;
+	@apply bg-slate-50 text-slate-900 antialiased dark:bg-boxdark dark:text-white;
 	padding-left: env(safe-area-inset-left);
 	padding-right: env(safe-area-inset-right);
 }
