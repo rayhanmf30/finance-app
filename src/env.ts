@@ -22,6 +22,9 @@ export const variables = defineEnvVars({
 	DEMO_USER_ID: {
 		schema: (value) => value
 	},
+	ADMIN_EMAILS: {
+		schema: (value) => value
+	},
 	AUTH_SECRET: {
 		schema: (value) => value
 	}

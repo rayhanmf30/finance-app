@@ -5,6 +5,10 @@ declare global {
 		interface Locals {
 			/** ID user yang login (dari session cookie), atau null bila belum login. */
 			userId: string | null;
+			/** Role akun: 'user' | 'admin' (default 'user' bila belum login). */
+			userRole: 'user' | 'admin';
+			/** True bila akun diblokir oleh admin (hanya relevan saat login). */
+			isBlocked: boolean;
 		}
 		// interface Error {}
 		// interface PageData {}

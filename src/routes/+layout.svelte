@@ -40,6 +40,10 @@
 		{ href: '/transactions', label: 'Transaksi' }
 	];
 
+	const navLinks = $derived(
+		authService.isAdmin ? [...links, { href: '/admin', label: 'Admin' }] : links
+	);
+
 	const active = (href: string) =>
 		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
 </script>
@@ -54,7 +58,7 @@
 			<a href="/" class="text-lg font-bold text-indigo-600">💰 FinanceApp</a>
 			<nav class="flex flex-wrap items-center gap-1">
 				{#if authService.currentUser}
-					{#each links as link (link.href)}
+					{#each navLinks as link (link.href)}
 						<a
 							href={link.href}
 							class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {active(link.href)

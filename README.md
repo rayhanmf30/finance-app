@@ -42,6 +42,12 @@ npm run dev
 | `/api/auth/login` | POST | Masuk (email + password) → session cookie httpOnly 7 hari |
 | `/api/auth/logout` | POST | Keluar (hapus cookie session) |
 | `/api/auth/me` | GET | Profil user yang sedang login |
+| `/api/admin/users` | GET | (Admin) Daftar semua akun + statistik data, cari via `?query=` |
+| `/api/admin/users/[id]` | PATCH | (Admin) Blokir/buka blokir (dengan alasan) & ubah role |
+| `/api/admin/categories` | GET/POST | (Admin) Semua kategori + pemakaian; buat kategori sistem |
+| `/api/admin/categories/[id]` | PATCH/DELETE | (Admin) Edit nama/warna & hapus kategori sistem (dijaga dari pemakaian) |
+| `/api/admin/wallet-types` | GET/POST | (Admin) Semua tipe dompet + jumlah pemakaian; buat tipe baru |
+| `/api/admin/wallet-types/[code]` | PATCH/DELETE | (Admin) Edit label/aktif & hapus tipe dompet |
 
 ### Deployment: Supabase + Vercel
 
@@ -51,6 +57,7 @@ Adapter build adalah `@sveltejs/adapter-vercel` — semua endpoint `/api/*` berj
 
 - Buat project baru di [supabase.com](https://supabase.com).
 - Jalankan skema: **SQL Editor** → tempel seluruh isi `server/schema.sql` → Run. (Opsional: jalankan `server/seed.sql` untuk data demo.)
+- **Database lama yang sudah jalan** (sebelum fitur admin): jalankan `server/migrations/001_admin_and_wallet_types.sql` — menambah kolom `role`/`is_blocked`/`block_reason` pada `users`, membuat tabel `wallet_types`, mengubah `wallets.type` menjadi FK, dan mengangkat user demo menjadi admin.
 
 **2. Ambil parameter koneksi**
 
@@ -76,6 +83,7 @@ Koneksi memakai env variable terpisah, bukan satu connection string. Ambil datan
 | `DB_NAME` | `postgres` |
 | `DB_SSL` | kosongkan (SSL otomatis aktif untuk host non-lokal) |
 | `AUTH_SECRET` | string acak ≥32 karakter — kunci signing cookie session (**wajib**). Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `ADMIN_EMAILS` | opsional — email (pisah koma) yang otomatis mendapat role **admin** saat registrasi |
 | `DEMO_USER_ID` | tidak diperlukan lagi (kompatibilitas lama) |
 
 Jika password mengandung karakter khusus (`@`, `#`, `%`, dll.) tidak perlu di-encode karena dikirim sebagai env var terpisah, bukan bagian dari URL.
@@ -92,6 +100,19 @@ Jika password mengandung karakter khusus (`@`, `#`, `%`, dll.) tidak perlu di-en
 - Session: cookie httpOnly `fa_session` berisi payload + signature **HMAC-SHA256** dengan kunci `AUTH_SECRET` — tanpa tabel session (stateless). Verifikasi dilakukan di `src/hooks.server.ts`, hasilnya di `event.locals.userId`.
 - Seluruh endpoint `/api/*` (kecuali auth & health) mewajibkan login (`requireUserId` → 401) dan memfilter query per `user_id`, sehingga transaksi dompet & budget **terpisah penuh antar user**.
 - Halaman `/login` dan `/register`; halaman privat diarahkan ke `/login` bila belum login; tombol **Keluar** di navigasi.
+
+### Panel Admin
+
+Akses `/admin` terbatas untuk user ber-role `admin`. Role admin diberikan bila:
+
+- akun adalah **user pertama** yang mendaftar pada database kosong, **atau**
+- email akun tercantum di env `ADMIN_EMAILS` (dipisah koma, mis. `admin@contoh.com,owner@contoh.com`).
+
+Kemampuan panel admin:
+
+- **Manajemen akun** — daftar semua akun (cari nama/email, statistik transaksi/dompet/budget), **blokir** akun dengan alasan (user terblokir tidak bisa login maupun memakai API — 403), buka blokir, jadikan/cabut role admin. Admin tidak bisa memblokir atau menurunkan dirinya sendiri (anti-lockout).
+- **Manajemen kategori** — lihat semua kategori (sistem + milik user) beserta jumlah pemakaian, tambah/edit **kategori sistem** (nama, tipe, warna, kategori induk), hapus kategori sistem (ditolak 409 bila masih dipakai transaksi, sub-kategori, budget, atau item transaksi).
+- **Manajemen tipe dompet** — tipe dompet kini dinamis di tabel `wallet_types` (awal: Tunai/Bank/E-Wallet/Kartu Kredit). Admin dapat menambah, mengubah label, mengaktifkan/menonaktifkan, serta menghapus tipe (ditolak 409 bila masih dipakai dompet). Kolom `wallets.type` kini FK ke `wallet_types(code)`.
 
 - **`transactions.ts`** — penyimpanan atomik (`db.begin`): `SELECT ... FOR UPDATE` pada dompet, insert transaksi, update saldo per tipe (INCOME/EXPENSE/TRANSFER), lalu **warning engine** budget.
 - **Warning engine** — untuk EXPENSE, budget terkait (kategori transaksi + seluruh leluhur melalui recursive CTE, plus budget global) dievaluasi terhadap periode berjalan (`period.ts`: harian/minggu ISO/bulanan/tahunan). Jika pemakaian ≥ threshold atau > limit, `INSERT INTO budget_alerts ... ON CONFLICT (budget_id, period_key, alert_level) DO NOTHING` — anti-spam per periode.
