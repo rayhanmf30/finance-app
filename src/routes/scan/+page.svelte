@@ -4,12 +4,23 @@
 	import { transactionStore } from '#lib/features/transactions/transaction.store.svelte';
 	import { dashboardStore } from '#lib/features/dashboard/dashboard.store.svelte';
 	import { transactionService } from '#lib/features/transactions/services/transaction.service';
+	import type { Category, TransactionInput, Wallet } from '#lib/shared/models/domain';
 	import UploadDropzone from '#lib/features/receipt-scanner/components/UploadDropzone.svelte';
 	import ReceiptReviewModal from '#lib/features/receipt-scanner/components/ReceiptReviewModal.svelte';
-	import type { TransactionInput } from '#lib/shared/models/domain';
 
-	const wallets = transactionService.getWallets();
-	const categories = transactionService.getCategories();
+	let wallets = $state<Wallet[]>([]);
+	let categories = $state<Category[]>([]);
+
+	$effect(() => {
+		loadReferenceData();
+	});
+
+	async function loadReferenceData() {
+		[wallets, categories] = await Promise.all([
+			transactionService.getWallets(),
+			transactionService.getCategories()
+		]);
+	}
 
 	const uploading = $derived(receiptStore.status === 'uploading');
 	const reviewing = $derived(receiptStore.status === 'reviewing' && receiptStore.extraction);
@@ -30,7 +41,7 @@
 
 <div class="mx-auto max-w-2xl space-y-6">
 	<div>
-		<h1 class="text-xl font-bold text-slate-900">Scan Resi Belanja</h1>
+		<h1 class="text-xl font-bold text-slate-900 sm:text-2xl">Scan Resi Belanja</h1>
 		<p class="mt-1 text-sm text-slate-500">
 			Unggah foto struk, AI akan mengekstrak data transaksi secara otomatis.
 		</p>

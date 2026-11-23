@@ -31,7 +31,11 @@
 	let total = $state(untrack(() => extraction.total));
 	let date = $state(untrack(() => extraction.transactionDate.slice(0, 10)));
 	let categoryId = $state(untrack(() => extraction.suggestedCategoryId ?? ''));
-	let walletId = $state(untrack(() => wallets[0]?.id ?? ''));
+	let walletId = $state('');
+
+	$effect(() => {
+		if (!walletId && wallets.length > 0) walletId = wallets[0].id;
+	});
 
 	const expenseCategories = $derived(categories.filter((c) => c.type === 'EXPENSE'));
 	const itemsTotal = $derived(

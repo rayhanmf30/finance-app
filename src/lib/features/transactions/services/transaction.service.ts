@@ -1,5 +1,6 @@
-import { categories, delay, nextId, transactions, wallets } from '#lib/core/api/mock-db';
+import { httpClient } from '#lib/core/api/http-client';
 import type {
+	Category,
 	Transaction,
 	TransactionFilter,
 	TransactionInput,
@@ -8,75 +9,24 @@ import type {
 
 class TransactionService {
 	async list(filter: TransactionFilter): Promise<Transaction[]> {
-		await delay(200);
-
-		const [year, month] = filter.month.split('-').map(Number);
-		const query = filter.query.trim().toLowerCase();
-
-		return transactions
-			.filter((transaction) => {
-				const date = new Date(transaction.transactionDate);
-				const inMonth = date.getFullYear() === year && date.getMonth() + 1 === month;
-				if (!inMonth) return false;
-				if (!query) return true;
-				const category = categories.find((c) => c.id === transaction.categoryId);
-				return (
-					transaction.note.toLowerCase().includes(query) ||
-					(category?.name.toLowerCase().includes(query) ?? false)
-				);
-			})
-			.sort((a, b) => b.transactionDate.localeCompare(a.transactionDate));
+		const params = new URLSearchParams({ month: filter.month, query: filter.query });
+		return httpClient.get<Transaction[]>(`/api/transactions?${params}`);
 	}
 
 	async create(input: TransactionInput): Promise<Transaction> {
-		await delay(150);
-
-		const transaction: Transaction = {
-			id: nextId('t'),
-			walletId: input.walletId,
-			destinationWalletId: input.destinationWalletId ?? null,
-			categoryId: input.categoryId ?? null,
-			type: input.type,
-			amount: input.amount,
-			transactionDate: input.transactionDate,
-			note: input.note ?? ''
-		};
-
-		transactions.push(transaction);
-		this.applyBalance(transaction);
-		return transaction;
+		return httpClient.post<Transaction>('/api/transactions', input);
 	}
 
 	async remove(id: string): Promise<void> {
-		await delay(150);
-
-		const index = transactions.findIndex((t) => t.id === id);
-		if (index === -1) throw new Error('Transaksi tidak ditemukan');
-		const [removed] = transactions.splice(index, 1);
-		this.applyBalance(removed, true);
+		await httpClient.delete<void>(`/api/transactions/${id}`);
 	}
 
-	private applyBalance(transaction: Transaction, reverse = false): void {
-		const sign = reverse ? -1 : 1;
-		const source = wallets.find((w) => w.id === transaction.walletId);
-		const destination = wallets.find((w) => w.id === transaction.destinationWalletId);
-
-		if (source) {
-			if (transaction.type === 'INCOME') source.currentBalance += sign * transaction.amount;
-			else source.currentBalance -= sign * transaction.amount;
-		}
-
-		if (destination) {
-			destination.currentBalance += sign * transaction.amount;
-		}
+	async getWallets(): Promise<Wallet[]> {
+		return httpClient.get<Wallet[]>('/api/wallets');
 	}
 
-	getWallets(): Wallet[] {
-		return wallets;
-	}
-
-	getCategories(type?: 'INCOME' | 'EXPENSE') {
-		return type ? categories.filter((c) => c.type === type) : categories;
+	async getCategories(): Promise<Category[]> {
+		return httpClient.get<Category[]>('/api/categories');
 	}
 }
 

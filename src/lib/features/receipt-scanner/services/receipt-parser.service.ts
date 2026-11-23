@@ -1,4 +1,4 @@
-import { mockOcrService } from '#lib/core/ocr/ocr.service';
+import { httpClient } from '#lib/core/api/http-client';
 import type { ReceiptExtraction } from '#lib/shared/models/domain';
 
 const MAX_DIMENSION = 1600;
@@ -27,7 +27,9 @@ class ReceiptParserService {
 
 	async parse(file: File): Promise<ReceiptExtraction> {
 		const compressed = await this.compressImage(file);
-		return mockOcrService.parseReceipt(compressed);
+		const form = new FormData();
+		form.append('receipt', compressed, 'receipt.jpg');
+		return httpClient.post<ReceiptExtraction>('/api/receipts/parse', form);
 	}
 }
 
