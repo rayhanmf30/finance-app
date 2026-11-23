@@ -17,7 +17,7 @@
 
 	function amountClass(type: Transaction['type']): string {
 		if (type === 'INCOME') return 'text-emerald-600';
-		if (type === 'TRANSFER') return 'text-slate-500';
+		if (type === 'TRANSFER') return 'text-slate-500 dark:text-slate-400 dark:text-metadark';
 		return 'text-red-600';
 	}
 
@@ -29,16 +29,16 @@
 </script>
 
 {#if transactions.length === 0}
-	<p class="py-8 text-center text-sm text-slate-400">Tidak ada transaksi.</p>
+	<p class="py-8 text-center text-sm text-slate-400 dark:text-metadark">Tidak ada transaksi.</p>
 {:else}
-	<ul class="divide-y divide-slate-100">
+	<ul class="divide-y divide-slate-100 dark:divide-slate-700/60">
 		{#each transactions as transaction (transaction.id)}
 			<li class="flex items-center justify-between gap-4 py-3">
 				<div class="min-w-0">
 					<p class="truncate text-sm font-medium text-slate-800">
 						{transaction.note || categoryName(transaction.categoryId)}
 					</p>
-					<p class="text-xs text-slate-400">
+					<p class="text-xs text-slate-400 dark:text-metadark">
 						{formatDate(transaction.transactionDate)} · {categoryName(transaction.categoryId)}
 					</p>
 				</div>

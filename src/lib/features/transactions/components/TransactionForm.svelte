@@ -50,7 +50,7 @@
 			type="button"
 			class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors {type === 'EXPENSE'
 				? 'border-red-500 bg-red-50 text-red-700'
-				: 'border-slate-200 text-slate-500'}"
+				: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
 			onclick={() => (type = 'EXPENSE')}
 		>
 			Pengeluaran
@@ -59,7 +59,7 @@
 			type="button"
 			class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors {type === 'INCOME'
 				? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-				: 'border-slate-200 text-slate-500'}"
+				: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
 			onclick={() => (type = 'INCOME')}
 		>
 			Pemasukan

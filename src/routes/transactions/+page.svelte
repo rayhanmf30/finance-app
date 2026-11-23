@@ -53,7 +53,7 @@
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
-		<h1 class="text-xl font-bold text-slate-900 sm:text-2xl">
+		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
 			Riwayat Transaksi — {formatMonthYear(transactionStore.filter.month)}
 		</h1>
 		<Button variant="primary" onclick={() => (showForm = true)}>+ Tambah Transaksi</Button>
@@ -79,11 +79,11 @@
 		</p>
 	{/if}
 
-	<div class="rounded-xl bg-white px-5 py-2 shadow-sm ring-1 ring-slate-200">
+	<div class="rounded-xl bg-white dark:bg-boxdark-2 px-5 py-2 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
 		{#if transactionStore.loading}
 			<div class="space-y-3 py-4">
 				{#each Array(4) as _, index (index)}
-					<div class="h-10 animate-pulse rounded-lg bg-slate-100"></div>
+					<div class="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-boxdark-2"></div>
 				{/each}
 			</div>
 		{:else}
