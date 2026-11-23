@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Category, TransactionInput, TransactionType, Wallet } from '#lib/shared/models/domain';
+	import type { Category, Transaction, TransactionInput, TransactionType, Wallet } from '#lib/shared/models/domain';
 	import { Button } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
@@ -9,16 +9,25 @@
 		categories: Category[];
 		wallets: Wallet[];
 		onsubmit: (input: TransactionInput) => void;
+		/** Diisi saat mode edit transaksi (prefill nilai lama). */
+		initial?: Transaction | null;
 	}
 
-	let { categories, wallets, onsubmit }: Props = $props();
+	let { categories, wallets, onsubmit, initial = null }: Props = $props();
 
-	let type = $state<TransactionType>('EXPENSE');
-	let amount = $state<number>(0);
-	let date = $state(new Date().toISOString().slice(0, 10));
-	let categoryId = $state('');
-	let walletId = $state('');
-	let note = $state('');
+	// Prefill untuk mode edit sengaja dibaca sekali saat inisialisasi.
+	// svelte-ignore state_referenced_locally
+	let type = $state<TransactionType>(initial?.type ?? 'EXPENSE');
+	// svelte-ignore state_referenced_locally
+	let amount = $state<number>(initial?.amount ?? 0);
+	// svelte-ignore state_referenced_locally
+	let date = $state(initial ? initial.transactionDate.slice(0, 10) : new Date().toISOString().slice(0, 10));
+	// svelte-ignore state_referenced_locally
+	let categoryId = $state(initial?.categoryId ?? '');
+	// svelte-ignore state_referenced_locally
+	let walletId = $state(initial?.walletId ?? '');
+	// svelte-ignore state_referenced_locally
+	let note = $state(initial?.note ?? '');
 
 	$effect(() => {
 		if (!walletId && wallets.length > 0) walletId = wallets[0].id;
@@ -80,6 +89,6 @@
 	<Input label="Catatan (opsional)" placeholder="Keterangan singkat" bind:value={note} />
 
 	<div class="pt-2">
-		<Button type="submit" variant="primary">Simpan Transaksi</Button>
+		<Button type="submit" variant="primary">{initial ? 'Simpan Perubahan' : 'Simpan Transaksi'}</Button>
 	</div>
 </form>

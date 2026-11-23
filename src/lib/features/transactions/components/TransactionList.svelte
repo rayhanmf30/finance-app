@@ -6,10 +6,12 @@
 	interface Props {
 		transactions: Transaction[];
 		categories: Category[];
+		onview?: (transaction: Transaction) => void;
+		onedit?: (transaction: Transaction) => void;
 		ondelete?: (id: string) => void;
 	}
 
-	let { transactions, categories, ondelete }: Props = $props();
+	let { transactions, categories, onview, onedit, ondelete }: Props = $props();
 
 	function categoryName(id: string | null): string {
 		return categories.find((c) => c.id === id)?.name ?? '—';
@@ -35,14 +37,41 @@
 		{#each transactions as transaction (transaction.id)}
 			<li class="flex items-center justify-between gap-4 py-3">
 				<div class="min-w-0">
-					<p class="truncate text-sm font-medium text-slate-800">
+					<button
+						type="button"
+						class="block w-full cursor-pointer truncate text-left text-sm font-medium text-slate-800 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400"
+						onclick={() => onview?.(transaction)}
+					>
 						{transaction.note || categoryName(transaction.categoryId)}
-					</p>
+					</button>
 					<p class="text-xs text-slate-400 dark:text-metadark">
 						{formatDate(transaction.transactionDate)} · {categoryName(transaction.categoryId)}
 					</p>
 				</div>
 				<div class="flex items-center gap-3">
+					<button
+						type="button"
+						aria-label="Lihat detail"
+						class="cursor-pointer rounded-md p-1.5 text-slate-400 dark:text-metadark transition-colors hover:bg-slate-100 dark:hover:bg-boxdark hover:text-indigo-600 dark:hover:text-indigo-400"
+						onclick={() => onview?.(transaction)}
+					>
+						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+							<path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+						</svg>
+					</button>
+					{#if onedit && transaction.type !== 'TRANSFER'}
+						<button
+							type="button"
+							aria-label="Edit"
+							class="cursor-pointer rounded-md p-1.5 text-slate-400 dark:text-metadark transition-colors hover:bg-slate-100 dark:hover:bg-boxdark hover:text-indigo-600 dark:hover:text-indigo-400"
+							onclick={() => onedit?.(transaction)}
+						>
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+							</svg>
+						</button>
+					{/if}
 					<span class="text-sm font-semibold whitespace-nowrap {amountClass(transaction.type)}">
 						{amountPrefix(transaction.type)}{formatCurrency(transaction.amount)}
 					</span>
