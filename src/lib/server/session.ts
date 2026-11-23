@@ -3,9 +3,21 @@ import { error } from '@sveltejs/kit';
 import { AUTH_SECRET } from '$app/env/private';
 
 /** Kembalikan userId dari session, atau lempar 401. */
-export function requireUserId(locals: { userId: string | null }): string {
+export function requireUserId(locals: App.Locals): string {
 	if (!locals.userId) throw error(401, 'Silakan login terlebih dahulu.');
+	if (locals.isBlocked) {
+		throw error(403, 'Akun Anda diblokir oleh admin.');
+	}
 	return locals.userId;
+}
+
+/** Kembalikan userId yang punya role admin, atau lempar 401/403. */
+export function requireAdmin(locals: App.Locals): string {
+	const userId = requireUserId(locals);
+	if (locals.userRole !== 'admin') {
+		throw error(403, 'Akses khusus admin.');
+	}
+	return userId;
 }
 
 const SESSION_COOKIE = 'fa_session';

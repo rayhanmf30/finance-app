@@ -7,6 +7,7 @@ export interface SessionUser {
 	name: string;
 	email: string;
 	defaultCurrency: string;
+	role?: 'user' | 'admin';
 }
 
 class AuthService {
@@ -15,6 +16,7 @@ class AuthService {
 	loaded = $state(false);
 
 	readonly isAuthenticated = $derived(this.currentUser !== null);
+	readonly isAdmin = $derived(this.currentUser?.role === 'admin');
 
 	/** Muat user dari server sekali (dipanggil dari layout). */
 	async load(): Promise<void> {
@@ -48,12 +50,14 @@ class AuthService {
 
 export const authService = new AuthService();
 
+/** Label default tipe dompet — tipe tambahan buatan admin memakai kodenya langsung. */
+const WALLET_TYPE_LABELS: Record<string, string> = {
+	CASH: 'Tunai',
+	BANK: 'Bank',
+	EWALLET: 'E-Wallet',
+	CREDIT_CARD: 'Kartu Kredit'
+};
+
 export function walletTypeLabel(type: WalletType): string {
-	const labels: Record<WalletType, string> = {
-		CASH: 'Tunai',
-		BANK: 'Bank',
-		EWALLET: 'E-Wallet',
-		CREDIT_CARD: 'Kartu Kredit'
-	};
-	return labels[type];
+	return WALLET_TYPE_LABELS[type] ?? type;
 }

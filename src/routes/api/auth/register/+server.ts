@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { hashPassword, validateEmail, validatePassword } from '#lib/server/auth';
+import { ADMIN_EMAILS } from '$app/env/private';
 import { createSessionToken, sessionCookie } from '#lib/server/session';
 import { db } from '#lib/server/db';
 import type { RequestHandler } from './$types';
@@ -30,11 +31,19 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 	const passwordHash = hashPassword(password);
 
+	// Role admin otomatis untuk user pertama pada database yang masih kosong,
+	// atau bila email tercantum di env ADMIN_EMAILS (dipisah koma).
+	const [userCount, adminEmails] = await Promise.all([
+		db`SELECT count(*)::int AS n FROM users`,
+		Promise.resolve((ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean))
+	]);
+	const role = userCount[0].n === 0 || adminEmails.includes(email) ? 'admin' : 'user';
+
 	try {
 		const rows = await db`
-			INSERT INTO users (name, email, password_hash)
-			VALUES (${name}, ${email}, ${passwordHash})
-			RETURNING id, name, email, default_currency
+			INSERT INTO users (name, email, password_hash, role)
+			VALUES (${name}, ${email}, ${passwordHash}, ${role})
+			RETURNING id, name, email, role, default_currency
 		`;
 		const user = rows[0];
 
@@ -46,7 +55,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		const token = createSessionToken(user.id);
 		cookies.set(sessionCookie.name, token, sessionCookie.options);
-		return json({ id: user.id, name: user.name, email: user.email, defaultCurrency: user.default_currency }, { status: 201 });
+		return json({ id: user.id, name: user.name, email: user.email, role: user.role, defaultCurrency: user.default_currency }, { status: 201 });
 	} catch (err) {
 		// unique_violation: email sudah terdaftar.
 		const code = (err as { code?: string }).code;

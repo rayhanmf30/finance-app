@@ -12,16 +12,25 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	const password = body.password ?? '';
 
 	const rows = await db`
-		SELECT id, name, email, password_hash, default_currency
+		SELECT id, name, email, password_hash, default_currency, role, is_blocked, block_reason
 		FROM users
 		WHERE email = ${email}
 	`;
 	if (rows.length === 0 || !rows[0].password_hash || !verifyPassword(password, rows[0].password_hash)) {
 		throw error(401, 'Email atau password salah.');
 	}
+	if (rows[0].is_blocked) {
+		throw error(403, rows[0].block_reason || 'Akun Anda diblokir oleh admin.');
+	}
 
 	const user = rows[0];
 	const token = createSessionToken(user.id);
 	cookies.set(sessionCookie.name, token, sessionCookie.options);
-	return json({ id: user.id, name: user.name, email: user.email, defaultCurrency: user.default_currency });
+	return json({
+		id: user.id,
+		name: user.name,
+		email: user.email,
+		defaultCurrency: user.default_currency,
+		role: user.role
+	});
 };

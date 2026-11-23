@@ -14,10 +14,31 @@ CREATE TABLE IF NOT EXISTS users (
     name             VARCHAR(150)  NOT NULL,
     email            VARCHAR(150)  NOT NULL UNIQUE,
     password_hash    VARCHAR(255),
+    role             VARCHAR(20)   NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    is_blocked       BOOLEAN       NOT NULL DEFAULT FALSE,
+    block_reason     TEXT,
     default_currency VARCHAR(3)    NOT NULL DEFAULT 'IDR',
     created_at       TIMESTAMP     NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMP     NOT NULL DEFAULT NOW()
 );
+
+-- -------------------------------------------------------------
+-- wallet_types (tipe dompet dinamis, dikelola admin)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS wallet_types (
+    code       VARCHAR(20)  PRIMARY KEY,
+    label      VARCHAR(50)  NOT NULL,
+    is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO wallet_types (code, label) VALUES
+    ('CASH', 'Tunai'),
+    ('BANK', 'Bank'),
+    ('EWALLET', 'E-Wallet'),
+    ('CREDIT_CARD', 'Kartu Kredit')
+ON CONFLICT (code) DO NOTHING;
 
 -- -------------------------------------------------------------
 -- wallets (sumber dana: tunai, bank, e-wallet, kartu kredit)
@@ -26,7 +47,7 @@ CREATE TABLE IF NOT EXISTS wallets (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id              UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name                 VARCHAR(100) NOT NULL,
-    type                 VARCHAR(20)  NOT NULL CHECK (type IN ('CASH', 'BANK', 'EWALLET', 'CREDIT_CARD')),
+    type                 VARCHAR(20)  NOT NULL REFERENCES wallet_types(code),
     currency             VARCHAR(3)   NOT NULL DEFAULT 'IDR',
     current_balance      DECIMAL(15,2) NOT NULL DEFAULT 0.00,
     is_included_in_total BOOLEAN      NOT NULL DEFAULT TRUE,
@@ -178,6 +199,10 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_users_updated ON users;
 CREATE TRIGGER trg_users_updated BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_wallet_types_updated ON wallet_types;
+CREATE TRIGGER trg_wallet_types_updated BEFORE UPDATE ON wallet_types
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_wallets_updated ON wallets;

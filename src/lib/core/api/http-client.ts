@@ -47,5 +47,10 @@ export const httpClient = {
 			method: 'PUT',
 			body: body instanceof FormData ? body : JSON.stringify(body)
 		}),
+	patch: <T>(url: string, body: unknown) =>
+		request<T>(url, {
+			method: 'PATCH',
+			body: body instanceof FormData ? body : JSON.stringify(body)
+		}),
 	delete: <T>(url: string) => request<T>(url, { method: 'DELETE' })
 };

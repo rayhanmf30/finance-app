@@ -2,12 +2,13 @@
 -- Jalankan setelah schema.sql.
 
 -- User demo dengan ID tetap (dipakai oleh backend selama auth belum diaktifkan)
-INSERT INTO users (id, name, email, default_currency)
+INSERT INTO users (id, name, email, default_currency, role)
 VALUES (
     '00000000-0000-0000-0000-000000000001',
     'Demo User',
     'demo@financeapp.id',
-    'IDR'
+    'IDR',
+    'admin'
 )
 ON CONFLICT (email) DO NOTHING;
 

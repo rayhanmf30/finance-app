@@ -7,12 +7,19 @@ export const GET: RequestHandler = async ({ locals }) => {
 	if (!userId) throw error(401, 'Belum login.');
 
 	const rows = await db`
-		SELECT id, name, email, default_currency
+		SELECT id, name, email, default_currency, role, is_blocked, block_reason
 		FROM users
 		WHERE id = ${userId}
 	`;
 	if (rows.length === 0) throw error(401, 'Sesi tidak valid.');
 
 	const u = rows[0];
-	return json({ id: u.id, name: u.name, email: u.email, defaultCurrency: u.default_currency });
+	if (u.is_blocked) throw error(403, u.block_reason || 'Akun Anda diblokir oleh admin.');
+	return json({
+		id: u.id,
+		name: u.name,
+		email: u.email,
+		defaultCurrency: u.default_currency,
+		role: u.role
+	});
 };

@@ -1,6 +1,40 @@
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 export type CategoryType = 'INCOME' | 'EXPENSE';
-export type WalletType = 'CASH' | 'BANK' | 'EWALLET' | 'CREDIT_CARD';
+/** Kode tipe dompet dinamis — dikelola admin di tabel wallet_types. */
+export type WalletType = string;
+export interface WalletTypeInfo {
+	code: string;
+	label: string;
+	isActive: boolean;
+	walletCount: number;
+}
+
+export type UserRole = 'user' | 'admin';
+
+export interface AdminUser {
+	id: string;
+	name: string;
+	email: string;
+	role: UserRole;
+	isBlocked: boolean;
+	blockReason: string | null;
+	createdAt: string;
+	transactionCount: number;
+	walletCount: number;
+	budgetCount: number;
+}
+
+export interface AdminCategory {
+	id: string;
+	ownerId: string | null;
+	parentId: string | null;
+	name: string;
+	type: CategoryType;
+	color: string | null;
+	transactionCount: number;
+	childCount: number;
+}
+
 export type BudgetPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type BudgetStatusType = 'SAFE' | 'WARNING' | 'EXCEEDED';
 
