@@ -3,21 +3,20 @@
 	import { authService } from '#lib/core/auth/auth.service.svelte';
 	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 	import { IconButton } from '#lib/shared/components';
+	import { toast } from '#lib/shared/toast/toast.store.svelte';
 
 	let email = $state('');
 	let password = $state('');
-	let errorMessage = $state('');
 	let submitting = $state(false);
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		errorMessage = '';
 		submitting = true;
 		try {
 			await authService.login(email, password);
 			await goto('/');
 		} catch (err) {
-			errorMessage = err instanceof Error ? i18n.displayError(err) : i18n.t('auth.loginFailed');
+			toast.error(err instanceof Error && err.message ? i18n.displayError(err) : i18n.t('auth.loginFailed'));
 		} finally {
 			submitting = false;
 		}
@@ -60,10 +59,6 @@
 					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 			</label>
-
-			{#if errorMessage}
-				<p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{errorMessage}</p>
-			{/if}
 
 			<IconButton
 				type="submit"

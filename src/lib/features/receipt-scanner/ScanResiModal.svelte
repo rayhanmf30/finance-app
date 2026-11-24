@@ -62,7 +62,6 @@
 				{categories}
 				{wallets}
 				{saving}
-				error={receiptStore.error}
 				onsave={handleSave}
 			/>
 		{:else}
@@ -70,10 +69,6 @@
 				{i18n.t('scan.desc')}
 			</p>
 			<UploadDropzone disabled={uploading || saving} onfile={(file) => void receiptStore.upload(file)} />
-
-			{#if receiptStore.error}
-				<p class="mt-3 whitespace-pre-line rounded-lg bg-red-50 p-3 text-sm text-red-700">{receiptStore.error}</p>
-			{/if}
 
 			{#if uploading}
 				<div class="mt-3 space-y-2 rounded-lg bg-slate-50 dark:bg-boxdark p-4">

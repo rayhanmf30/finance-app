@@ -35,6 +35,9 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'budget.globalHint': 'Kosongkan semua = budget global (semua pengeluaran).',
 		'budget.selectedCount': 'Kategori terpilih:',
 		'budget.failedLoad': 'Gagal memuat budget.',
+		'toast.dismiss': 'Tutup notifikasi',
+		'tx.failedLoad': 'Gagal memuat transaksi.',
+		'dash.failedLoad': 'Gagal memuat ringkasan. Pastikan backend database berjalan.',
 		'errors.generic': 'Terjadi kesalahan.',
 
 		// ---- Navigasi ----
@@ -94,6 +97,11 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'tx.thAmount': 'Nominal',
 		'tx.thActions': 'Aksi',
 		'tx.noTransactions': 'Tidak ada transaksi.',
+		'tx.addedToast': 'Transaksi berhasil disimpan.',
+		'tx.updatedToast': 'Transaksi berhasil diperbarui.',
+		'tx.deletedToast': 'Transaksi berhasil dihapus.',
+		'tx.failedSave': 'Gagal menyimpan transaksi.',
+		'budget.savedToast': 'Budget berhasil disimpan.',
 		'tx.failedUpdate': 'Gagal memperbarui transaksi.',
 		'tx.failedDelete': 'Gagal menghapus transaksi.',
 		'tx.deleteTitle': 'Hapus Transaksi',
@@ -328,6 +336,9 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'budget.globalHint': 'Leave all unchecked = global budget (all expenses).',
 		'budget.selectedCount': 'Selected categories:',
 		'budget.failedLoad': 'Failed to load budgets.',
+		'toast.dismiss': 'Dismiss notification',
+		'tx.failedLoad': 'Failed to load transactions.',
+		'dash.failedLoad': 'Failed to load summary. Make sure the backend database is running.',
 		'errors.generic': 'Something went wrong.',
 
 		// ---- Navigation ----
@@ -387,6 +398,11 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'tx.thAmount': 'Amount',
 		'tx.thActions': 'Actions',
 		'tx.noTransactions': 'No transactions.',
+		'tx.addedToast': 'Transaction saved.',
+		'tx.updatedToast': 'Transaction updated.',
+		'tx.deletedToast': 'Transaction deleted.',
+		'tx.failedSave': 'Failed to save transaction.',
+		'budget.savedToast': 'Budget saved.',
 		'tx.failedUpdate': 'Failed to update transaction.',
 		'tx.failedDelete': 'Failed to delete transaction.',
 		'tx.deleteTitle': 'Delete Transaction',

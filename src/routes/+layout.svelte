@@ -7,6 +7,7 @@
 	import { themeService } from '#lib/core/theme/theme.service.svelte';
 	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 	import Icon from '#lib/shared/components/Icon.svelte';
+	import ToastHost from '#lib/shared/toast/ToastHost.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -279,3 +280,6 @@
 		<p class="animate-pulse text-sm text-slate-400 dark:text-metadark">{i18n.t('common.loading')}</p>
 	</div>
 {/if}
+
+<!-- Host toast global: semua notifikasi aplikasi muncul dari sini -->
+<ToastHost />

@@ -1,4 +1,6 @@
 import type { Transaction, TransactionFilter } from '#lib/shared/models/domain';
+import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
+import { toast } from '#lib/shared/toast/toast.store.svelte';
 import { transactionService } from './services/transaction.service';
 
 function currentMonthValue(): string {
@@ -9,16 +11,14 @@ function currentMonthValue(): string {
 class TransactionStore {
 	transactions = $state<Transaction[]>([]);
 	loading = $state(false);
-	error = $state<string | null>(null);
 	filter = $state<TransactionFilter>({ month: currentMonthValue(), query: '' });
 
 	async refresh(): Promise<void> {
 		this.loading = true;
-		this.error = null;
 		try {
 			this.transactions = await transactionService.list(this.filter);
 		} catch {
-			this.error = 'Gagal memuat transaksi.';
+			toast.error(i18n.t('tx.failedLoad')); // notifikasi lewat toast, bukan banner
 		} finally {
 			this.loading = false;
 		}

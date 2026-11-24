@@ -14,12 +14,10 @@
 		categories: Category[];
 		wallets: Wallet[];
 		saving?: boolean;
-		/** Pesan error saat menyimpan (ditampilkan di atas form agar tidak hilang). */
-		error?: string | null;
 		onsave: (input: Omit<TransactionInput, 'type'>) => void;
 	}
 
-	let { extraction, previewUrl, categories, wallets, saving = false, error = null, onsave }: Props = $props();
+	let { extraction, previewUrl, categories, wallets, saving = false, onsave }: Props = $props();
 
 	let merchantName = $state(untrack(() => extraction.merchantName));
 	let total = $state(untrack(() => extraction.total));
@@ -73,9 +71,7 @@
 	{/if}
 
 	<form class="space-y-3" onsubmit={(event) => { event.preventDefault(); save(); }}>
-		{#if error}
-			<p class="whitespace-pre-line rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>
-		{/if}
+		<!-- Gagal simpan kini dinotifikasikan lewat toast (status tetap 'reviewing'). -->
 
 		<Input label={i18n.t('scan.merchant')} bind:value={merchantName} />
 		<Input label={i18n.t('scan.date')} type="date" bind:value={date} required />

@@ -12,6 +12,7 @@
 	import BudgetStatusCard from '#lib/features/budgets/components/BudgetStatusCard.svelte';
 	import BudgetFormModal from '#lib/features/budgets/components/BudgetFormModal.svelte';
 	import { IconButton } from '#lib/shared/components/index';
+	import { toast } from '#lib/shared/toast/toast.store.svelte';
 	import TransactionList from '#lib/features/transactions/components/TransactionList.svelte';
 	import ScanResiModal from '#lib/features/receipt-scanner/ScanResiModal.svelte';
 
@@ -19,7 +20,6 @@
 	let showBudgetForm = $state(false);
 	let scanOpen = $state(false);
 	let savingBudget = $state(false);
-	let budgetError = $state<string | null>(null);
 
 	$effect(() => {
 		dashboardStore.refresh();
@@ -36,12 +36,12 @@
 
 	async function handleSaveBudget(input: BudgetInput) {
 		savingBudget = true;
-		budgetError = null;
 		try {
 			await budgetStore.create(input);
 			showBudgetForm = false;
+			toast.success(i18n.t('budget.savedToast'));
 		} catch {
-			budgetError = i18n.t('dash.failedSaveBudget');
+			toast.error(i18n.t('dash.failedSaveBudget')); // notifikasi lewat toast
 		} finally {
 			savingBudget = false;
 		}
@@ -57,9 +57,6 @@
 		<IconButton variant="primary" icon="scan" size="md" label={i18n.t('dash.scanReceipt')} onclick={() => (scanOpen = true)} />
 	</div>
 
-	{#if dashboardStore.error}
-		<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{dashboardStore.error}</p>
-	{/if}
 
 	{#if dashboardStore.loading}
 		<div class="grid gap-4 sm:grid-cols-3">
@@ -89,9 +86,6 @@
 				<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('dash.budgetStatus')}</h3>
 				<IconButton variant="primary" icon="plus" label={i18n.t('dash.setupBudget')} onclick={() => (showBudgetForm = true)} />
 			</div>
-			{#if budgetError}
-				<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{budgetError}</p>
-			{/if}
 			<BudgetStatusCard rows={budgetStore.rows} loading={budgetStore.loading} />
 		</section>
 
