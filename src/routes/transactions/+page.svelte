@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Button, Modal } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
 	import { transactionStore } from '#lib/features/transactions/transaction.store.svelte';
@@ -11,7 +12,6 @@
 	import ScanResiModal from '#lib/features/receipt-scanner/ScanResiModal.svelte';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
 
-	let showForm = $state(false);
 	let viewTarget = $state<Transaction | null>(null);
 	let editTarget = $state<Transaction | null>(null);
 	let scanOpen = $state(false);
@@ -31,18 +31,6 @@
 			transactionService.getWallets(),
 			transactionService.getCategories()
 		]);
-	}
-
-	async function handleSubmit(input: TransactionInput) {
-		actionError = null;
-		try {
-			await transactionService.create(input);
-			showForm = false;
-			await transactionStore.refresh();
-			dashboardStore.refresh();
-		} catch {
-			actionError = 'Gagal menyimpan transaksi.';
-		}
 	}
 
 	function openEditFromDetail(t: Transaction) {
@@ -87,7 +75,7 @@
 				</svg>
 				Scan Resi
 			</Button>
-			<Button variant="primary" onclick={() => (showForm = true)}>+ Tambah Transaksi</Button>
+			<Button variant="primary" onclick={() => goto('/transactions/new')}>+ Tambah Transaksi</Button>
 		</div>
 	</div>
 
@@ -129,12 +117,6 @@
 		{/if}
 	</div>
 </div>
-
-{#if showForm}
-	<Modal title="Transaksi Baru" onclose={() => (showForm = false)}>
-		<TransactionForm {categories} {wallets} onsubmit={handleSubmit} />
-	</Modal>
-{/if}
 
 {#if viewTarget}
 	<TransactionDetailModal
