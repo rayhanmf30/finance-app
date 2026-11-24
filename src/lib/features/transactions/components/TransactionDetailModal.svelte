@@ -81,7 +81,7 @@
 			</table>
 		</div>
 	{/if}
-	{#if onedit && transaction.type !== 'TRANSFER'}
+	{#if onedit}
 		<div class="mt-4 flex justify-end">
 			<Button onclick={() => onedit?.(transaction)}>Edit Transaksi</Button>
 		</div>

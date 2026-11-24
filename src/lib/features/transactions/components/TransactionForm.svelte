@@ -28,19 +28,35 @@
 	// svelte-ignore state_referenced_locally
 	let walletId = $state(initial?.walletId ?? '');
 	// svelte-ignore state_referenced_locally
+	let destinationWalletId = $state(initial?.destinationWalletId ?? '');
+	// svelte-ignore state_referenced_locally
 	let note = $state(initial?.note ?? '');
 
 	$effect(() => {
 		if (!walletId && wallets.length > 0) walletId = wallets[0].id;
 	});
 
+	// Pindah saldo: pilih otomatis dompet tujuan yang berbeda dari dompet sumber.
+	$effect(() => {
+		if (type !== 'TRANSFER') return;
+		if (!destinationWalletId || destinationWalletId === walletId) {
+			destinationWalletId = wallets.find((w) => w.id !== walletId)?.id ?? '';
+		}
+	});
+
 	const visibleCategories = $derived(categories.filter((c) => c.type === type));
+	const destinationOptions = $derived(
+		wallets
+			.filter((w) => w.id !== walletId)
+			.map((w) => ({ value: w.id, label: w.typeLabel ? `${w.name} (${w.typeLabel})` : w.name }))
+	);
 
 	let submitting = $state(false);
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (submitting || amount <= 0 || !walletId) return;
+		if (type === 'TRANSFER' && (!destinationWalletId || destinationWalletId === walletId)) return;
 
 		submitting = true;
 		try {
@@ -48,7 +64,8 @@
 				type,
 				amount,
 				walletId,
-				categoryId: categoryId || null,
+				destinationWalletId: type === 'TRANSFER' ? destinationWalletId : null,
+				categoryId: type === 'TRANSFER' ? null : categoryId || null,
 				transactionDate: new Date(`${date}T12:00:00`).toISOString(),
 				note
 			});
@@ -64,7 +81,7 @@
 </script>
 
 <form onsubmit={submit} class="space-y-4">
-	<div class="grid grid-cols-2 gap-2">
+	<div class="grid grid-cols-3 gap-2">
 		<button
 			type="button"
 			class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors {type === 'EXPENSE'
@@ -83,24 +100,45 @@
 		>
 			Pemasukan
 		</button>
+		<button
+			type="button"
+			class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors {type === 'TRANSFER'
+				? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+				: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
+			onclick={() => (type = 'TRANSFER')}
+		>
+			Transfer
+		</button>
 	</div>
 
 	<Input label="Nominal" type="number" min="1" step="any" bind:value={amount} required />
 	<Input label="Tanggal" type="date" bind:value={date} required />
 	<WalletSelect wallets={wallets} bind:value={walletId} />
-	<Select
-		label="Kategori"
-		options={[
-			{ value: '', label: 'Tanpa kategori' },
-			...visibleCategories.map((c) => ({ value: c.id, label: c.name }))
-		]}
-		bind:value={categoryId}
-	/>
+	{#if type === 'TRANSFER'}
+		<Select
+			label="Dompet Tujuan"
+			required
+			options={[
+				{ value: '', label: 'Pilih dompet tujuan…' },
+				...destinationOptions
+			]}
+			bind:value={destinationWalletId}
+		/>
+	{:else}
+		<Select
+			label="Kategori"
+			options={[
+				{ value: '', label: 'Tanpa kategori' },
+				...visibleCategories.map((c) => ({ value: c.id, label: c.name }))
+			]}
+			bind:value={categoryId}
+		/>
+	{/if}
 	<Input label="Catatan (opsional)" placeholder="Keterangan singkat" bind:value={note} />
 
 	<div class="pt-2">
 		<Button type="submit" variant="primary" loading={submitting}>
-			{initial ? 'Simpan Perubahan' : 'Simpan Transaksi'}
+			{initial ? 'Simpan Perubahan' : type === 'TRANSFER' ? 'Pindahkan Saldo' : 'Simpan Transaksi'}
 		</Button>
 	</div>
 </form>
