@@ -5,4 +5,6 @@ export { default as Icon } from './Icon.svelte';
 export { default as IconButton } from './IconButton.svelte';
 export { default as ActionMenu } from './ActionMenu.svelte';
 export { default as ConfirmModal } from './ConfirmModal.svelte';
+export { default as AmountInput } from './AmountInput.svelte';
+export { default as DatePicker } from './DatePicker.svelte';
 export type { IconName } from './icon-paths';

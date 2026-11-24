@@ -136,7 +136,7 @@ export async function createTransaction(userId: string, input: CreateTransaction
 
 		const locked = await tx<{ id: string; current_balance: string }[]>`
 			SELECT id, current_balance FROM wallets
-			WHERE user_id = ${userId} AND id IN ${tx(walletIds)}
+			WHERE user_id = ${userId} AND id = ANY(${walletIds})
 			ORDER BY id
 			FOR UPDATE
 		`;
@@ -227,7 +227,7 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 		);
 		const locked = await tx<{ id: string; current_balance: string }[]>`
 			SELECT id, current_balance FROM wallets
-			WHERE user_id = ${userId} AND id IN ${tx(involved)}
+			WHERE user_id = ${userId} AND id = ANY(${involved})
 			ORDER BY id
 			FOR UPDATE
 		`;
@@ -391,6 +391,8 @@ export interface BudgetStatusRow {
 	categoryNames: string[];
 	periodType: PeriodType;
 	periodKey: string;
+	/** Persentase ambang peringatan — diperlukan untuk prefill mode edit. */
+	warningThresholdPct: number;
 	limitAmount: number;
 	spentAmount: number;
 	remainingAmount: number;
@@ -411,6 +413,7 @@ export function mapBudgetStatus(budget: BudgetRecord, spent: number, key: string
 		categoryNames: budget.category_names ?? [],
 		periodType: budget.period_type,
 		periodKey: key,
+		warningThresholdPct: budget.warning_threshold_pct,
 		limitAmount: limit,
 		spentAmount: spent,
 		remainingAmount: remaining,
@@ -467,7 +470,7 @@ async function sumExpenses(
 	// Jumlahkan pengeluaran pada gabungan subtree SEMUA kategori terpilih.
 	const rows = await executor<{ total: string }[]>`
 		WITH RECURSIVE subtree AS (
-			SELECT id FROM categories WHERE id IN ${categoryIds}
+			SELECT id FROM categories WHERE id = ANY(${categoryIds})
 			UNION ALL
 			SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
 		)

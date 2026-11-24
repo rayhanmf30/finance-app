@@ -15,6 +15,7 @@
 	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
 	import { formatCurrency } from '#lib/shared/pipes/currency';
+	import { toast } from '#lib/shared/toast/toast.store.svelte';
 
 	let viewTarget = $state<Transaction | null>(null);
 	let editTarget = $state<Transaction | null>(null);
@@ -25,7 +26,6 @@
 	let searchInput = $state('');
 	let wallets = $state<Wallet[]>([]);
 	let categories = $state<Category[]>([]);
-	let actionError = $state<string | null>(null);
 
 	$effect(() => {
 		transactionStore.filter.month;
@@ -74,27 +74,27 @@
 
 	async function handleUpdate(input: TransactionInput) {
 		if (!editTarget) return;
-		actionError = null;
 		try {
 			await transactionService.update(editTarget.id, input);
 			editTarget = null;
 			await transactionStore.refresh();
 			dashboardStore.refresh();
+			toast.success(i18n.t('tx.updatedToast'));
 		} catch {
-			actionError = i18n.t('tx.failedUpdate');
+			toast.error(i18n.t('tx.failedUpdate')); // notifikasi lewat toast
 		}
 	}
 
 	async function handleDelete() {
 		if (!deleteTarget || deleting) return;
 		deleting = true;
-		actionError = null;
 		try {
 			await transactionStore.remove(deleteTarget.id);
 			deleteTarget = null;
 			dashboardStore.refresh();
+			toast.success(i18n.t('tx.deletedToast'));
 		} catch {
-			actionError = i18n.t('tx.failedDelete');
+			toast.error(i18n.t('tx.failedDelete')); // notifikasi lewat toast
 		} finally {
 			deleting = false;
 		}
@@ -164,11 +164,6 @@
 		</form>
 	</div>
 
-	{#if transactionStore.error || actionError}
-		<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-			{transactionStore.error ?? actionError}
-		</p>
-	{/if}
 
 	<div class="rounded-xl bg-white px-5 py-2 shadow-sm ring-1 ring-slate-200 dark:bg-boxdark-2 dark:ring-slate-700">
 		<!-- Tabel selalu dirender: header tetap, hanya body yang berubah saat memuat. -->

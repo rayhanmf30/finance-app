@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { formatCurrency } from '#lib/shared/pipes/currency';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
 	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
-	import type { BudgetInput, Category } from '#lib/shared/models/domain';
+	import type { Category } from '#lib/shared/models/domain';
 	import { dashboardStore } from '#lib/features/dashboard/dashboard.store.svelte';
 	import SummaryCard from '#lib/features/dashboard/components/SummaryCard.svelte';
 	import CashflowChart from '#lib/features/dashboard/components/CashflowChart.svelte';
@@ -10,16 +11,12 @@
 	import { transactionService } from '#lib/features/transactions/services/transaction.service';
 	import { budgetStore } from '#lib/features/budgets/budgets.store.svelte';
 	import BudgetStatusCard from '#lib/features/budgets/components/BudgetStatusCard.svelte';
-	import BudgetFormModal from '#lib/features/budgets/components/BudgetFormModal.svelte';
 	import { IconButton } from '#lib/shared/components/index';
 	import TransactionList from '#lib/features/transactions/components/TransactionList.svelte';
 	import ScanResiModal from '#lib/features/receipt-scanner/ScanResiModal.svelte';
 
 	let categories = $state<Category[]>([]);
-	let showBudgetForm = $state(false);
 	let scanOpen = $state(false);
-	let savingBudget = $state(false);
-	let budgetError = $state<string | null>(null);
 
 	$effect(() => {
 		dashboardStore.refresh();
@@ -34,18 +31,6 @@
 
 	const recent = $derived(transactionStore.transactions.slice(0, 5));
 
-	async function handleSaveBudget(input: BudgetInput) {
-		savingBudget = true;
-		budgetError = null;
-		try {
-			await budgetStore.create(input);
-			showBudgetForm = false;
-		} catch {
-			budgetError = i18n.t('dash.failedSaveBudget');
-		} finally {
-			savingBudget = false;
-		}
-	}
 </script>
 
 <div class="space-y-6">
@@ -57,9 +42,6 @@
 		<IconButton variant="primary" icon="scan" size="md" label={i18n.t('dash.scanReceipt')} onclick={() => (scanOpen = true)} />
 	</div>
 
-	{#if dashboardStore.error}
-		<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{dashboardStore.error}</p>
-	{/if}
 
 	{#if dashboardStore.loading}
 		<div class="grid gap-4 sm:grid-cols-3">
@@ -87,11 +69,8 @@
 		<section class="rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
 			<div class="mb-4 flex items-center justify-between">
 				<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('dash.budgetStatus')}</h3>
-				<IconButton variant="primary" icon="plus" label={i18n.t('dash.setupBudget')} onclick={() => (showBudgetForm = true)} />
+				<IconButton variant="primary" icon="plus" label={i18n.t('dash.setupBudget')} onclick={() => goto('/budgets')} />
 			</div>
-			{#if budgetError}
-				<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{budgetError}</p>
-			{/if}
 			<BudgetStatusCard rows={budgetStore.rows} loading={budgetStore.loading} />
 		</section>
 
@@ -111,14 +90,5 @@
 		<TransactionList transactions={recent} {categories} />
 	</section>
 </div>
-
-{#if showBudgetForm}
-	<BudgetFormModal
-		{categories}
-		saving={savingBudget}
-		onsave={handleSaveBudget}
-		onclose={() => (showBudgetForm = false)}
-	/>
-{/if}
 
 <ScanResiModal open={scanOpen} onclose={() => (scanOpen = false)} />

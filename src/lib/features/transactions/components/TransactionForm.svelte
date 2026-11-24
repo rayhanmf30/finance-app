@@ -2,6 +2,8 @@
 	import type { Category, Transaction, TransactionInput, TransactionType, Wallet } from '#lib/shared/models/domain';
 	import { Button } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
+	import AmountInput from '#lib/shared/components/AmountInput.svelte';
+	import DatePicker from '#lib/shared/components/DatePicker.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
 	import WalletSelect from '#lib/shared/components/WalletSelect.svelte';
 	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
@@ -112,8 +114,10 @@
 		</button>
 	</div>
 
-	<Input label={i18n.t('tx.labelAmount')} type="number" min="1" step="any" bind:value={amount} required />
-	<Input label={i18n.t('tx.labelDate')} type="date" bind:value={date} required />
+	<!-- Nominal: AmountInput dengan separator ribuan; nilai terkirim tetap number. -->
+	<AmountInput label={i18n.t('tx.labelAmount')} bind:value={amount} min={1} required />
+	<!-- Tanggal: DatePicker kustom (klik pilih tanggal dari kalender). -->
+	<DatePicker label={i18n.t('tx.labelDate')} bind:value={date} required />
 	<WalletSelect wallets={wallets} bind:value={walletId} />
 	{#if type === 'TRANSFER'}
 		<Select

@@ -8,6 +8,7 @@
 	import ConfirmModal from '#lib/shared/components/ConfirmModal.svelte';
 	import IconButton from '#lib/shared/components/IconButton.svelte';
 	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
+	import { toast } from '#lib/shared/toast/toast.store.svelte';
 	import { formatCurrency } from '#lib/shared/pipes/currency';
 	import type { AdminCategory, AdminUser, AdminWallet, WalletTypeInfo } from '#lib/shared/models/domain';
 
@@ -29,8 +30,6 @@
 	);
 	let loading = $state(true);
 	let acting = $state(false);
-	let error = $state('');
-	let notice = $state('');
 
 	// ---- Akun ----
 	let users = $state<AdminUser[]>([]);
@@ -84,14 +83,9 @@
 
 	const systemCategories = $derived(categories.filter((c) => c.ownerId === null));
 
-	function flash(message: string) {
-		notice = message;
-		error = '';
-		setTimeout(() => (notice = ''), 4000);
-	}
-
+	/** Semua notifikasi hasil aksi lewat toast global. */
 	function showError(err: unknown) {
-		error = err instanceof Error ? err.message || i18n.t('errors.generic') : i18n.t('errors.generic');
+		toast.error(err instanceof Error && err.message ? err.message : i18n.t('errors.generic'));
 	}
 
 	async function loadUsers() {
@@ -165,8 +159,7 @@
 
 	async function loadTab(tab: Tab) {
 		try {
-			error = '';
-			if (tab === 'users') await loadUsers();
+				if (tab === 'users') await loadUsers();
 			else if (tab === 'categories') await loadCategories();
 			else if (tab === 'wallets') await loadAdminWallets();
 			else await loadWalletTypes();
@@ -191,10 +184,9 @@
 	async function withAction(fn: () => Promise<void>, successMessage: string) {
 		if (acting) return;
 		acting = true;
-		error = '';
 		try {
 			await fn();
-			flash(successMessage);
+			toast.success(successMessage);
 		} catch (err) {
 			showError(err);
 		} finally {
@@ -248,7 +240,7 @@
 			!/[a-zA-Z]/.test(newPassword) ||
 			!/[0-9]/.test(newPassword)
 		) {
-			error = i18n.t('admin.pwRule');
+			toast.error(i18n.t('admin.pwRule'));
 			return;
 		}
 		passwordTarget = null;
@@ -292,7 +284,7 @@
 			mode === 'add' &&
 			(form.password.length < 8 || !/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password))
 		) {
-			error = i18n.t('admin.pwRule');
+			toast.error(i18n.t('admin.pwRule'));
 			return;
 		}
 		void withAction(async () => {
@@ -446,7 +438,7 @@
 		const mode = dompetModalMode;
 		const initialBalance = Number(form.initialBalance);
 		if (!Number.isFinite(initialBalance) || initialBalance < 0) {
-			error = i18n.t('admin.balanceRule');
+			toast.error(i18n.t('admin.balanceRule'));
 			return;
 		}
 		void withAction(async () => {
@@ -495,12 +487,6 @@
 		</h1>
 	</div>
 
-	{#if notice}
-		<div class="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{notice}</div>
-	{/if}
-	{#if error}
-		<div class="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
-	{/if}
 
 	{#if activeTab === 'users'}
 		<Card>

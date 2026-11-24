@@ -5,6 +5,8 @@
 	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 	import { Button } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
+	import AmountInput from '#lib/shared/components/AmountInput.svelte';
+	import DatePicker from '#lib/shared/components/DatePicker.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
 	import WalletSelect from '#lib/shared/components/WalletSelect.svelte';
 
@@ -14,12 +16,10 @@
 		categories: Category[];
 		wallets: Wallet[];
 		saving?: boolean;
-		/** Pesan error saat menyimpan (ditampilkan di atas form agar tidak hilang). */
-		error?: string | null;
 		onsave: (input: Omit<TransactionInput, 'type'>) => void;
 	}
 
-	let { extraction, previewUrl, categories, wallets, saving = false, error = null, onsave }: Props = $props();
+	let { extraction, previewUrl, categories, wallets, saving = false, onsave }: Props = $props();
 
 	let merchantName = $state(untrack(() => extraction.merchantName));
 	let total = $state(untrack(() => extraction.total));
@@ -73,13 +73,11 @@
 	{/if}
 
 	<form class="space-y-3" onsubmit={(event) => { event.preventDefault(); save(); }}>
-		{#if error}
-			<p class="whitespace-pre-line rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>
-		{/if}
+		<!-- Gagal simpan kini dinotifikasikan lewat toast (status tetap 'reviewing'). -->
 
 		<Input label={i18n.t('scan.merchant')} bind:value={merchantName} />
-		<Input label={i18n.t('scan.date')} type="date" bind:value={date} required />
-		<Input label={i18n.t('scan.total')} type="number" min="1" step="any" bind:value={total} required />
+		<DatePicker label={i18n.t('scan.date')} bind:value={date} required />
+		<AmountInput label={i18n.t('scan.total')} bind:value={total} min={1} required />
 
 		<div class="rounded-lg bg-slate-50 dark:bg-boxdark p-3 text-xs text-slate-600 dark:text-slate-300">
 			<p class="mb-2 font-semibold">{i18n.t('scan.itemsCount', { count: extraction.items.length })}</p>

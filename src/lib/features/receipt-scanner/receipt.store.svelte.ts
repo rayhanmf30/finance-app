@@ -1,6 +1,7 @@
 import { transactionService } from '#lib/features/transactions/services/transaction.service';
 import type { ReceiptExtraction, TransactionInput } from '#lib/shared/models/domain';
 import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
+import { toast } from '#lib/shared/toast/toast.store.svelte';
 import { receiptParserService } from './services/receipt-parser.service';
 
 export type ReceiptStatus = 'idle' | 'uploading' | 'reviewing' | 'saving' | 'saved';
@@ -9,12 +10,10 @@ class ReceiptStore {
 	status = $state<ReceiptStatus>('idle');
 	previewUrl = $state<string | null>(null);
 	extraction = $state<ReceiptExtraction | null>(null);
-	error = $state<string | null>(null);
 
 	async upload(file: File): Promise<void> {
 		this.reset();
 		this.status = 'uploading';
-		this.error = null;
 
 		try {
 			this.previewUrl = URL.createObjectURL(file);
@@ -22,9 +21,8 @@ class ReceiptStore {
 			this.status = 'reviewing';
 		} catch (err) {
 			const detail = err instanceof Error ? err.message : '';
-			this.error = detail
-				? i18n.t('scan.failedExtract', { detail })
-				: i18n.t('scan.failedExtractPlain');
+			// Notifikasi gagal ekstraksi lewat toast (panel tetap di fase unggah).
+			toast.error(detail ? i18n.t('scan.failedExtract', { detail }) : i18n.t('scan.failedExtractPlain'));
 			this.status = 'idle';
 		}
 	}
@@ -35,12 +33,10 @@ class ReceiptStore {
 		try {
 			await transactionService.create({ ...input, type: 'EXPENSE' });
 			this.status = 'saved';
-			this.error = null;
 		} catch (err) {
 			const detail = err instanceof Error ? err.message : '';
-			this.error = detail
-				? i18n.t('scan.failedSave', { detail })
-				: i18n.t('scan.failedSavePlain');
+			// Gagal simpan: notifikasi toast, review panel tetap terbuka (status kembali 'reviewing').
+			toast.error(detail ? i18n.t('scan.failedSave', { detail }) : i18n.t('scan.failedSavePlain'));
 			this.status = 'reviewing';
 		}
 	}
@@ -50,7 +46,6 @@ class ReceiptStore {
 		this.status = 'idle';
 		this.previewUrl = null;
 		this.extraction = null;
-		this.error = null;
 	}
 }
 
