@@ -55,12 +55,16 @@
 		{ id: '', name: '', type: 'EXPENSE', color: '#64748b', parentId: '' }
 	);
 	let categoryDeleteTarget = $state<AdminCategory | null>(null);
+	let categorySearchInput = $state('');
+	let searchingCategory = $state(false);
 
 	// ---- Tipe Dompet ----
 	let walletTypes = $state<WalletTypeInfo[]>([]);
 	let walletModalMode = $state<'add' | 'edit' | null>(null);
 	let walletForm = $state<{ code: string; label: string }>({ code: '', label: '' });
 	let walletTypeDeleteTarget = $state<WalletTypeInfo | null>(null);
+	let walletTypeSearchInput = $state('');
+	let searchingWalletType = $state(false);
 
 	// ---- Dompet (tabel wallets) ----
 	let adminWallets = $state<AdminWallet[]>([]);
@@ -75,6 +79,8 @@
 		isIncludedInTotal: boolean;
 	}>({ id: '', userId: '', name: '', type: '', currency: 'IDR', initialBalance: '0', isIncludedInTotal: true });
 	let dompetDeleteTarget = $state<AdminWallet | null>(null);
+	let dompetSearchInput = $state('');
+	let searchingDompet = $state(false);
 
 	const systemCategories = $derived(categories.filter((c) => c.ownerId === null));
 
@@ -92,7 +98,11 @@
 		users = await adminService.listUsers(searchQuery);
 	}
 
-	/** Pencarian akun hanya diterapkan setelah tombol Cari ditekan. */
+	/**
+	 * Pencarian per tab hanya diterapkan setelah tombol Cari ditekan
+	 * (kebiasaan halaman Transaksi). Saat mencari, header tabel tetap tampil
+	 * dan hanya body yang menjadi skeleton.
+	 */
 	async function applyUserSearch() {
 		if (searchingUser) return;
 		searchingUser = true;
@@ -102,6 +112,42 @@
 			showError(err);
 		} finally {
 			searchingUser = false;
+		}
+	}
+
+	async function applyCategorySearch() {
+		if (searchingCategory) return;
+		searchingCategory = true;
+		try {
+			categories = await adminService.listCategories(categorySearchInput);
+		} catch (err) {
+			showError(err);
+		} finally {
+			searchingCategory = false;
+		}
+	}
+
+	async function applyWalletTypeSearch() {
+		if (searchingWalletType) return;
+		searchingWalletType = true;
+		try {
+			walletTypes = await adminService.listWalletTypes(walletTypeSearchInput);
+		} catch (err) {
+			showError(err);
+		} finally {
+			searchingWalletType = false;
+		}
+	}
+
+	async function applyDompetSearch() {
+		if (searchingDompet) return;
+		searchingDompet = true;
+		try {
+			adminWallets = await adminService.listWallets(dompetSearchInput);
+		} catch (err) {
+			showError(err);
+		} finally {
+			searchingDompet = false;
 		}
 	}
 
@@ -456,9 +502,7 @@
 		<div class="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
 	{/if}
 
-	{#if loading}
-		<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('common.loading')}</p>
-	{:else if activeTab === 'users'}
+	{#if activeTab === 'users'}
 		<Card>
 			<form
 				class="mb-4 flex flex-wrap items-end gap-2"
@@ -488,6 +532,9 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+						{#if loading || searchingUser}
+							<tr><td colspan="5" class="px-2 py-4"><div class="space-y-2">{#each Array(4) as _, index (index)}<div class="h-6 animate-pulse rounded bg-slate-100 dark:bg-boxdark-2" style="width: {100 - index * 12}%"></div>{/each}</div></td></tr>
+						{:else}
 						{#each users as u (u.id)}
 							{@const isSelf = u.id === authService.currentUser?.id}
 							<tr>
@@ -526,15 +573,29 @@
 						{:else}
 							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noUsers')}</td></tr>
 						{/each}
+						{/if}
 					</tbody>
 				</table>
 			</div>
 		</Card>
 	{:else if activeTab === 'categories'}
 		<Card>
-			<div class="mb-4 flex justify-end">
+			<form
+				class="mb-4 flex flex-wrap items-end gap-2"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void applyCategorySearch();
+				}}
+			>
+				<input
+					type="search"
+					placeholder={i18n.t('admin.searchCategory')}
+					bind:value={categorySearchInput}
+					class="min-w-52 flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+				/>
+				<IconButton type="submit" size="md" icon="search" label={i18n.t('common.search')} loading={searchingCategory} />
 				<IconButton size="md" variant="primary" icon="plus" label={i18n.t('admin.addCategory')} onclick={openCategoryAdd} />
-			</div>
+			</form>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
@@ -547,6 +608,9 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+						{#if loading || searchingCategory}
+							<tr><td colspan="5" class="px-2 py-4"><div class="space-y-2">{#each Array(4) as _, index (index)}<div class="h-6 animate-pulse rounded bg-slate-100 dark:bg-boxdark-2" style="width: {100 - index * 12}%"></div>{/each}</div></td></tr>
+						{:else}
 						{#each categories as c (c.id)}
 							{@const isSystem = c.ownerId === null}
 							<tr>
@@ -587,15 +651,29 @@
 						{:else}
 							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noCategories')}</td></tr>
 						{/each}
+						{/if}
 					</tbody>
 				</table>
 			</div>
 		</Card>
 	{:else if activeTab === 'walletTypes'}
 		<Card>
-			<div class="mb-4 flex justify-end">
+			<form
+				class="mb-4 flex flex-wrap items-end gap-2"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void applyWalletTypeSearch();
+				}}
+			>
+				<input
+					type="search"
+					placeholder={i18n.t('admin.searchWalletType')}
+					bind:value={walletTypeSearchInput}
+					class="min-w-52 flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+				/>
+				<IconButton type="submit" size="md" icon="search" label={i18n.t('common.search')} loading={searchingWalletType} />
 				<IconButton size="md" variant="primary" icon="plus" label={i18n.t('admin.addWalletType')} onclick={openWalletAdd} />
-			</div>
+			</form>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
@@ -608,6 +686,9 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+						{#if loading || searchingWalletType}
+							<tr><td colspan="5" class="px-2 py-4"><div class="space-y-2">{#each Array(4) as _, index (index)}<div class="h-6 animate-pulse rounded bg-slate-100 dark:bg-boxdark-2" style="width: {100 - index * 12}%"></div>{/each}</div></td></tr>
+						{:else}
 						{#each walletTypes as w (w.code)}
 							<tr>
 								<td class="px-2 py-3 font-mono text-xs text-slate-700 dark:text-slate-200">{w.code}</td>
@@ -628,6 +709,7 @@
 												{
 													icon: w.isActive ? 'x' : 'check',
 													label: w.isActive ? i18n.t('admin.deactivate') : i18n.t('admin.activate'),
+													disabled: acting,
 													onclick: () => toggleWalletActive(w)
 												},
 												{
@@ -645,15 +727,29 @@
 						{:else}
 							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noWalletTypes')}</td></tr>
 						{/each}
+						{/if}
 					</tbody>
 				</table>
 			</div>
 		</Card>
 	{:else}
 		<Card>
-			<div class="mb-4 flex justify-end">
+			<form
+				class="mb-4 flex flex-wrap items-end gap-2"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void applyDompetSearch();
+				}}
+			>
+				<input
+					type="search"
+					placeholder={i18n.t('admin.searchWallet')}
+					bind:value={dompetSearchInput}
+					class="min-w-52 flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+				/>
+				<IconButton type="submit" size="md" icon="search" label={i18n.t('common.search')} loading={searchingDompet} />
 				<IconButton size="md" variant="primary" icon="plus" label={i18n.t('admin.addWallet')} onclick={openDompetAdd} />
-			</div>
+			</form>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
@@ -667,6 +763,9 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+						{#if loading || searchingDompet}
+							<tr><td colspan="6" class="px-2 py-4"><div class="space-y-2">{#each Array(4) as _, index (index)}<div class="h-6 animate-pulse rounded bg-slate-100 dark:bg-boxdark-2" style="width: {100 - index * 12}%"></div>{/each}</div></td></tr>
+						{:else}
 						{#each adminWallets as w (w.id)}
 							<tr>
 								<td class="px-2 py-3">
@@ -707,6 +806,7 @@
 						{:else}
 							<tr><td colspan="6" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noWallets')}</td></tr>
 						{/each}
+						{/if}
 					</tbody>
 				</table>
 			</div>

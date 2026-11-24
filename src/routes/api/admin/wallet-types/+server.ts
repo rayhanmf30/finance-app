@@ -10,13 +10,19 @@ interface WalletTypeRow {
 	wallet_count: number;
 }
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	requireAdmin(locals);
+
+	const query = (url.searchParams.get('q') ?? '').trim();
+	const pattern = `%${query}%`;
 
 	const rows = await db<WalletTypeRow[]>`
 		SELECT wt.code, wt.label, wt.is_active,
 			(SELECT count(*) FROM wallets w WHERE w.type = wt.code)::int AS wallet_count
 		FROM wallet_types wt
+		WHERE ${query} = ''
+			OR wt.code ILIKE ${pattern}
+			OR wt.label ILIKE ${pattern}
 		ORDER BY wt.code
 	`;
 
