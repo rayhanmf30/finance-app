@@ -81,17 +81,17 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	try {
-		const rows = await db<{ id: string; name: string; email: string; role: 'user' | 'admin' }[]>`
+		const rows = await db<{ id: string; name: string; email: string; role: 'user' | 'admin'; default_currency: string }[]>`
 			INSERT INTO users (name, email, password_hash, role)
 			VALUES (${name}, ${email}, ${hashPassword(password)}, ${role})
-			RETURNING id, name, email, role
+			RETURNING id, name, email, role, default_currency
 		`;
 		const user = rows[0];
 
-		// Dompet awal agar akun baru langsung bisa mencatat transaksi (sama seperti registrasi).
+		// Dompet awal "Dompet Utama" (tipe Bank) agar akun baru langsung bisa mencatat transaksi.
 		await db`
 			INSERT INTO wallets (user_id, name, type, currency, current_balance, is_included_in_total)
-			VALUES (${user.id}, 'Dompet Tunai', 'CASH', 'IDR', 0, TRUE)
+			VALUES (${user.id}, 'Dompet Utama', 'BANK', ${user.default_currency}, 0, TRUE)
 		`;
 
 		return json({ id: user.id, name: user.name, email: user.email, role: user.role }, { status: 201 });

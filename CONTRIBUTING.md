@@ -2,15 +2,18 @@
 
 ## Alur Kerja (Workflow)
 
+**Aturan utama: setiap kali ada perubahan apa pun, rangkaian ini wajib dijalankan sampai tuntas — diakhiri pull request (baru atau yang diperbarui) dengan komentar yang berkaitan dengan perubahan. Perubahan tidak dianggap selesai hanya karena sudah di-push.**
+
 1. **Commit** — semua perubahan di-commit di branch `vibe` mengikuti format Conventional Commits di bawah.
 2. **Push** — setelah commit, push ke `origin/vibe`.
 3. **Pull Request** — setelah push, **wajib** memastikan ada pull request untuk branch `vibe`:
-   - bila belum ada → buat PR baru;
-   - bila sudah ada → siapkan update (commit baru otomatis masuk PR).
-4. **Komentar/deskripsi PR yang jelas** — deskripsi PR (atau komentar baru pada PR) wajib menjelaskan:
+   - bila belum ada → **buat PR baru**;
+   - bila sudah ada → gunakan PR yang ada (commit baru otomatis masuk) dan **perbarui deskripsinya** bila perlu.
+4. **Komentar PR yang berkaitan dengan perubahan** — setiap rangkaian perubahan wajib ditutup dengan **komentar baru pada PR** (atau pembaruan deskripsi PR) yang khusus menjelaskan perubahan tersebut:
    - daftar **fitur/perbaikan** yang dibuat (per commit, dengan type commit-nya);
-   - **cara verifikasi** yang sudah dilakukan (check, build, e2e);
+   - **cara verifikasi** yang sudah dilakukan (check, build, e2e/smoke test);
    - catatan khusus bila ada (migrasi DB, env baru, perubahan breaking).
+5. **Pantau CI** — setelah PR diperbarui, pantau hasil check/deploy hingga hijau; bila gagal, perbaiki dan ulangi alur dari langkah 1.
 
 ## Aturan Branch
 

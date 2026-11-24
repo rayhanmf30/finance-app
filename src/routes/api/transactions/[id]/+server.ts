@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import {
-	createTransaction,
 	deleteTransaction,
 	getTransaction,
-	listTransactionItems
+	listTransactionItems,
+	updateTransaction
 } from '#lib/server/transactions';
 import { requireUserId } from '#lib/server/session';
 import type { RequestHandler } from './$types';
@@ -22,13 +22,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	const userId = requireUserId(locals);
 	const body = await request.json();
-	// Pertahankan rincian barang lama bila request edit tidak mengirim items
-	// (implementasi saat ini hapus+bikin ulang transaksi secara atomik).
+	// Pertahankan rincian barang lama bila request edit tidak mengirim items.
 	if (!('items' in body)) {
 		const items = await listTransactionItems(userId, params.id);
 		if (items.length > 0) body.items = items;
 	}
-	await deleteTransaction(userId, params.id);
-	const transaction = await createTransaction(userId, body);
+	// UPDATE sejati: baris transaksi tetap (id & created_at stabil), saldo direkonsiliasi harmonis.
+	const transaction = await updateTransaction(userId, params.id, body);
 	return json(transaction);
 };

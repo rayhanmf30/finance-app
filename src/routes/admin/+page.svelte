@@ -966,7 +966,7 @@
 				</div>
 			{/if}
 			{#if accountModalMode === 'add'}
-				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Akun baru otomatis mendapat dompet awal "Dompet Tunai".</p>
+				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Akun baru otomatis mendapat dompet awal "Dompet Utama" (tipe Bank).</p>
 			{:else}
 				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Password dikelola lewat tombol "Ganti Password" pada tabel.</p>
 			{/if}
