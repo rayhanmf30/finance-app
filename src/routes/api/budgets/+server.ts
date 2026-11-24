@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const { categoryId, periodType, limitAmount, warningThresholdPct } = body ?? {};
 
 	if (!['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(periodType)) {
-		throw error(400, 'Tipe periode tidak valid.');
+		throw error(400, { message: 'Tipe periode tidak valid.', code: 'E_BAD_PERIOD' });
 	}
 
 	const limit = Number(limitAmount);

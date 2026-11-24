@@ -50,31 +50,31 @@ export function mapTransaction(row: TransactionRow) {
 
 function validateInput(input: CreateTransactionInput): void {
 	if (!['INCOME', 'EXPENSE', 'TRANSFER'].includes(input.type)) {
-		error(400, 'Tipe transaksi tidak valid.');
+		error(400, { message: 'Tipe transaksi tidak valid.', code: 'E_INVALID_TYPE' });
 	}
 
 	const amount = Number(input.amount);
 	if (!Number.isFinite(amount) || amount <= 0) {
-		error(400, 'Nominal harus lebih besar dari nol.');
+		error(400, { message: 'Nominal harus lebih besar dari nol.', code: 'E_INVALID_AMOUNT' });
 	}
 
 	const date = new Date(input.transactionDate);
 	if (Number.isNaN(date.getTime())) {
-		error(400, 'Tanggal transaksi tidak valid.');
+		error(400, { message: 'Tanggal transaksi tidak valid.', code: 'E_INVALID_DATE' });
 	}
 
 	if (input.type === 'TRANSFER') {
 		if (!input.destinationWalletId) {
-			error(400, 'Transfer wajib memiliki dompet tujuan.');
+			error(400, { message: 'Transfer wajib memiliki dompet tujuan.', code: 'E_TRANSFER_NEEDS_DEST' });
 		}
 		if (input.destinationWalletId === input.walletId) {
-			error(400, 'Dompet tujuan tidak boleh sama dengan dompet sumber.');
+			error(400, { message: 'Dompet tujuan tidak boleh sama dengan dompet sumber.', code: 'E_TRANSFER_SAME_WALLET' });
 		}
 	}
 
 	if (input.items) {
 		if (input.items.length > 500) {
-			error(400, 'Maksimal 500 item per transaksi.');
+			error(400, { message: 'Maksimal 500 item per transaksi.', code: 'E_TOO_MANY_ITEMS' });
 		}
 		input.items.forEach((item, index) => {
 			const label = `Item #${index + 1}`;
@@ -99,7 +99,7 @@ function validateInput(input: CreateTransactionInput): void {
 
 export async function listTransactions(userId: string, month: string, query: string) {
 	const [year, monthIndex] = month.split('-').map(Number);
-	if (!year || !monthIndex) error(400, 'Format bulan harus YYYY-MM.');
+	if (!year || !monthIndex) error(400, { message: 'Format bulan harus YYYY-MM.', code: 'E_BAD_MONTH' });
 
 	const start = new Date(year, monthIndex - 1, 1);
 	const end = new Date(year, monthIndex, 1);
@@ -141,14 +141,14 @@ export async function createTransaction(userId: string, input: CreateTransaction
 			FOR UPDATE
 		`;
 		if (locked.length !== walletIds.length) {
-			error(400, 'Dompet tidak ditemukan.');
+			error(400, { message: 'Dompet tidak ditemukan.', code: 'E_WALLET_NOT_FOUND' });
 		}
 
 		// Saldo dompet sumber tidak boleh minus akibat transfer.
 		if (input.type === 'TRANSFER') {
 			const source = locked.find((w) => w.id === input.walletId)!;
 			if (Number(source.current_balance) < amount) {
-				error(400, 'Saldo dompet sumber tidak cukup untuk transfer ini.');
+				error(400, { message: 'Saldo dompet sumber tidak cukup untuk transfer ini.', code: 'E_INSUFFICIENT_BALANCE' });
 			}
 		}
 
@@ -210,7 +210,7 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 			WHERE id = ${id} AND user_id = ${userId}
 			FOR UPDATE
 		`;
-		if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+		if (rows.length === 0) error(404, { message: 'Transaksi tidak ditemukan.', code: 'E_TX_NOT_FOUND' });
 		const old = rows[0];
 		const oldAmount = Number(old.amount);
 
@@ -232,7 +232,7 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 			FOR UPDATE
 		`;
 		if (locked.length !== involved.length) {
-			error(400, 'Dompet tidak ditemukan.');
+			error(400, { message: 'Dompet tidak ditemukan.', code: 'E_WALLET_NOT_FOUND' });
 		}
 
 		// Rekonsiliasi saldo: kumpulkan delta per dompet (kunci gabungan lama + baru,
@@ -268,7 +268,7 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 			const projected =
 				Number(source.current_balance) + (deltas.get(input.walletId) ?? 0);
 			if (projected < 0) {
-				error(400, 'Saldo dompet sumber tidak cukup untuk transfer ini.');
+				error(400, { message: 'Saldo dompet sumber tidak cukup untuk transfer ini.', code: 'E_INSUFFICIENT_BALANCE' });
 			}
 		}
 
@@ -326,7 +326,7 @@ export async function getTransaction(userId: string, id: string) {
 		FROM transactions
 		WHERE id = ${id}::uuid AND user_id = ${userId}
 	`;
-	if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+	if (rows.length === 0) error(404, { message: 'Transaksi tidak ditemukan.', code: 'E_TX_NOT_FOUND' });
 	const items = await listTransactionItems(userId, id);
 	return { ...mapTransaction(rows[0]), items };
 }
@@ -355,7 +355,7 @@ export async function deleteTransaction(userId: string, id: string) {
 			WHERE id = ${id} AND user_id = ${userId}
 			FOR UPDATE
 		`;
-		if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+		if (rows.length === 0) error(404, { message: 'Transaksi tidak ditemukan.', code: 'E_TX_NOT_FOUND' });
 
 		const row = rows[0];
 		const amount = Number(row.amount);

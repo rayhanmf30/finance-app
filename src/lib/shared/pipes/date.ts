@@ -1,5 +1,7 @@
+import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
+
 export function formatDate(isoDate: string): string {
-	return new Intl.DateTimeFormat('id-ID', {
+	return new Intl.DateTimeFormat(i18n.intlLocale, {
 		day: 'numeric',
 		month: 'short',
 		year: 'numeric'
@@ -8,7 +10,7 @@ export function formatDate(isoDate: string): string {
 
 export function formatMonthYear(month: string): string {
 	const [year, monthIndex] = month.split('-').map(Number);
-	return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(
+	return new Intl.DateTimeFormat(i18n.intlLocale, { month: 'long', year: 'numeric' }).format(
 		new Date(year, monthIndex - 1, 1)
 	);
 }

@@ -60,7 +60,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		// unique_violation: email sudah terdaftar.
 		const code = (err as { code?: string }).code;
 		if (code === '23505') {
-			throw error(409, 'Email sudah terdaftar. Silakan login.');
+			throw error(409, { message: 'Email sudah terdaftar. Silakan login.', code: 'E_EMAIL_TAKEN' });
 		}
 		throw err;
 	}

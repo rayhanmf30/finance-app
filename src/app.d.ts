@@ -10,7 +10,10 @@ declare global {
 			/** True bila akun diblokir oleh admin (hanya relevan saat login). */
 			isBlocked: boolean;
 		}
-		// interface Error {}
+		interface Error {
+			/** Kode error opsional (mis. E_UNAUTHORIZED) untuk internasionalisasi pesan error. */
+			code?: string;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

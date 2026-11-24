@@ -4,9 +4,9 @@ import { AUTH_SECRET } from '$app/env/private';
 
 /** Kembalikan userId dari session, atau lempar 401. */
 export function requireUserId(locals: App.Locals): string {
-	if (!locals.userId) throw error(401, 'Silakan login terlebih dahulu.');
+	if (!locals.userId) throw error(401, { message: 'Silakan login terlebih dahulu.', code: 'E_UNAUTHORIZED' });
 	if (locals.isBlocked) {
-		throw error(403, 'Akun Anda diblokir oleh admin.');
+		throw error(403, { message: 'Akun Anda diblokir oleh admin.', code: 'E_BLOCKED' });
 	}
 	return locals.userId;
 }
@@ -15,7 +15,7 @@ export function requireUserId(locals: App.Locals): string {
 export function requireAdmin(locals: App.Locals): string {
 	const userId = requireUserId(locals);
 	if (locals.userRole !== 'admin') {
-		throw error(403, 'Akses khusus admin.');
+		throw error(403, { message: 'Akses khusus admin.', code: 'E_FORBIDDEN' });
 	}
 	return userId;
 }
