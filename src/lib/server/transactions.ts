@@ -16,6 +16,13 @@ export interface TransactionRow {
 	note: string | null;
 }
 
+export interface TransactionItemRecord {
+	name: string;
+	quantity: number;
+	unitPrice: number;
+	discount?: number;
+}
+
 export interface CreateTransactionInput {
 	walletId: string;
 	destinationWalletId?: string | null;
@@ -24,6 +31,8 @@ export interface CreateTransactionInput {
 	amount: number;
 	transactionDate: string;
 	note?: string | null;
+	/** Rincian barang belanja (mis. dari scan resi) — disimpan ke tabel transaction_items. */
+	items?: TransactionItemRecord[];
 }
 
 export function mapTransaction(row: TransactionRow) {
@@ -61,6 +70,30 @@ function validateInput(input: CreateTransactionInput): void {
 		if (input.destinationWalletId === input.walletId) {
 			error(400, 'Dompet tujuan tidak boleh sama dengan dompet sumber.');
 		}
+	}
+
+	if (input.items) {
+		if (input.items.length > 500) {
+			error(400, 'Maksimal 500 item per transaksi.');
+		}
+		input.items.forEach((item, index) => {
+			const label = `Item #${index + 1}`;
+			if (!item.name || item.name.trim().length === 0 || item.name.length > 150) {
+				error(400, `${label} wajib punya nama 1-150 karakter.`);
+			}
+			const qty = Number(item.quantity);
+			if (!Number.isFinite(qty) || qty <= 0) {
+				error(400, `${label} harus punya kuantitas lebih besar dari nol.`);
+			}
+			const price = Number(item.unitPrice);
+			if (!Number.isFinite(price) || price < 0) {
+				error(400, `${label} harus punya harga satuan >= 0.`);
+			}
+			const discount = Number(item.discount ?? 0);
+			if (!Number.isFinite(discount) || discount < 0) {
+				error(400, `${label} harus punya diskon >= 0.`);
+			}
+		});
 	}
 }
 
@@ -126,12 +159,57 @@ export async function createTransaction(userId: string, input: CreateTransaction
 			await tx`UPDATE wallets SET current_balance = current_balance + ${amount} WHERE id = ${input.destinationWalletId!}`;
 		}
 
+		// Simpan rincian barang pada tabel transaction_items (satu baris per barang).
+		if (input.items && input.items.length > 0) {
+			// sql()/tx() dengan array objek otomatis menghasilkan kolom + multi VALUES.
+			await tx`
+				INSERT INTO transaction_items
+				${tx(
+					input.items.map((item) => ({
+						transaction_id: rows[0].id,
+						name: item.name.trim(),
+						quantity: Number(item.quantity),
+						unit_price: Number(item.unitPrice),
+						discount: Number(item.discount ?? 0)
+					}))
+				)}
+			`;
+		}
+
 		if (input.type === 'EXPENSE') {
 			await evaluateBudgets(tx, userId, input.categoryId ?? null, date);
 		}
 
 		return mapTransaction(rows[0]);
 	});
+}
+
+/** Satu transaksi + rincian barangnya. */
+export async function getTransaction(userId: string, id: string) {
+	const rows = await db<TransactionRow[]>`
+		SELECT id, wallet_id, destination_wallet_id, category_id, type, amount, transaction_date, note
+		FROM transactions
+		WHERE id = ${id}::uuid AND user_id = ${userId}
+	`;
+	if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+	const items = await listTransactionItems(userId, id);
+	return { ...mapTransaction(rows[0]), items };
+}
+
+/** Rincian barang milik sebuah transaksi (untuk pertahankan data saat edit). */
+export async function listTransactionItems(userId: string, transactionId: string): Promise<TransactionItemRecord[]> {
+	const rows = await db<{ name: string; quantity: string; unit_price: string; discount: string }[]>`
+		SELECT ti.name, ti.quantity, ti.unit_price, ti.discount
+		FROM transaction_items ti
+		JOIN transactions t ON t.id = ti.transaction_id
+		WHERE ti.transaction_id = ${transactionId}::uuid AND t.user_id = ${userId}
+	`;
+	return rows.map((r) => ({
+		name: r.name,
+		quantity: Number(r.quantity),
+		unitPrice: Number(r.unit_price),
+		discount: Number(r.discount ?? 0)
+	}));
 }
 
 export async function deleteTransaction(userId: string, id: string) {
