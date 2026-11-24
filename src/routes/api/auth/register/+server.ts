@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		// Dompet awal "Dompet Utama" (tipe Bank) agar user baru langsung bisa mencatat transaksi.
 		await db`
 			INSERT INTO wallets (user_id, name, type, currency, current_balance, is_included_in_total)
-			VALUES (${user.id}, 'Dompet Utama', 'BANK', ${user.default_currency}, 0, TRUE)
+			VALUES (${user.id}, 'Dompet Utama', (SELECT id FROM wallet_types WHERE code = 'BANK' AND user_id IS NULL), ${user.default_currency}, 0, TRUE)
 		`;
 
 		const token = createSessionToken(user.id);

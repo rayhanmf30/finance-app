@@ -23,15 +23,20 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- -------------------------------------------------------------
--- wallet_types (tipe dompet dinamis, dikelola admin)
+-- wallet_types (tipe dompet: global dikelola admin + milik per-user)
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS wallet_types (
-    code       VARCHAR(20)  PRIMARY KEY,
-    label      VARCHAR(50)  NOT NULL,
-    is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP    NOT NULL DEFAULT NOW()
+    id        UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id   UUID         NULL REFERENCES users(id) ON DELETE CASCADE,
+    code      VARCHAR(20)  NOT NULL,
+    label     VARCHAR(50)  NOT NULL,
+    is_active BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP   NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP   NOT NULL DEFAULT NOW()
 );
+-- user_id NULL = global (dikelola admin); unik per scope (global / per-user)
+CREATE UNIQUE INDEX IF NOT EXISTS wallet_types_user_code_uidx
+    ON wallet_types (COALESCE(user_id::text, 'GLOBAL'), code);
 
 INSERT INTO wallet_types (code, label) VALUES
     ('CASH', 'Tunai'),
@@ -47,7 +52,7 @@ CREATE TABLE IF NOT EXISTS wallets (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id              UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name                 VARCHAR(100) NOT NULL,
-    type                 VARCHAR(20)  NOT NULL REFERENCES wallet_types(code),
+    type                 UUID         NOT NULL REFERENCES wallet_types(id) ON DELETE RESTRICT,
     currency             VARCHAR(3)   NOT NULL DEFAULT 'IDR',
     current_balance      DECIMAL(15,2) NOT NULL DEFAULT 0.00,
     is_included_in_total BOOLEAN      NOT NULL DEFAULT TRUE,
