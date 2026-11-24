@@ -11,10 +11,15 @@
 	import TransactionDetailModal from '#lib/features/transactions/components/TransactionDetailModal.svelte';
 	import ScanResiModal from '#lib/features/receipt-scanner/ScanResiModal.svelte';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
+	import { formatCurrency } from '#lib/shared/pipes/currency';
 
 	let viewTarget = $state<Transaction | null>(null);
 	let editTarget = $state<Transaction | null>(null);
 	let scanOpen = $state(false);
+	let deleteTarget = $state<Transaction | null>(null);
+	let deleting = $state(false);
+	let searching = $state(false);
+	let searchInput = $state('');
 	let wallets = $state<Wallet[]>([]);
 	let categories = $state<Category[]>([]);
 	let actionError = $state<string | null>(null);
@@ -24,6 +29,23 @@
 		transactionStore.filter.query;
 		transactionStore.refresh();
 		loadReferenceData();
+	});
+
+	// Rincian barang dimuat saat modal dibuka dan dibuang setelah ditutup.
+	let viewItems = $state<Transaction['items'] | null>(null);
+	let viewItemsLoading = $state(false);
+	$effect(() => {
+		const target = viewTarget;
+		if (!target) {
+			viewItems = null;
+			return;
+		}
+		viewItemsLoading = true;
+		transactionService
+			.get(target.id)
+			.then((detail) => (viewItems = detail.items ?? []))
+			.catch(() => (viewItems = []))
+			.finally(() => (viewItemsLoading = false));
 	});
 
 	async function loadReferenceData() {
@@ -51,13 +73,30 @@
 		}
 	}
 
-	async function handleDelete(id: string) {
+	async function handleDelete() {
+		if (!deleteTarget || deleting) return;
+		deleting = true;
 		actionError = null;
 		try {
-			await transactionStore.remove(id);
+			await transactionStore.remove(deleteTarget.id);
+			deleteTarget = null;
 			dashboardStore.refresh();
 		} catch {
 			actionError = 'Gagal menghapus transaksi.';
+		} finally {
+			deleting = false;
+		}
+	}
+
+	/** Filter pencarian hanya diterapkan setelah tombol Cari ditekan. */
+	async function applySearch() {
+		if (searching) return;
+		searching = true;
+		try {
+			transactionStore.filter.query = searchInput.trim();
+			await transactionStore.refresh();
+		} finally {
+			searching = false;
 		}
 	}
 </script>
@@ -83,14 +122,17 @@
 		<div class="w-44">
 			<Input label="Bulan" type="month" bind:value={transactionStore.filter.month} />
 		</div>
-		<div class="min-w-56 flex-1">
-			<Input
-				label="Cari"
-				type="search"
-				placeholder="Cari catatan atau kategori…"
-				bind:value={transactionStore.filter.query}
-			/>
-		</div>
+			<form class="flex min-w-56 flex-1 flex-wrap items-end gap-2" onsubmit={(e) => { e.preventDefault(); void applySearch(); }}>
+			<div class="min-w-48 flex-1">
+				<Input
+					label="Cari"
+					type="search"
+					placeholder="Cari catatan atau kategori…"
+					bind:value={searchInput}
+				/>
+			</div>
+			<Button type="submit" variant="secondary" loading={searching}>Cari</Button>
+		</form>
 	</div>
 
 	{#if transactionStore.error || actionError}
@@ -100,29 +142,43 @@
 	{/if}
 
 	<div class="rounded-xl bg-white dark:bg-boxdark-2 px-5 py-2 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-		{#if transactionStore.loading}
-			<div class="space-y-3 py-4">
-				{#each Array(4) as _, index (index)}
-					<div class="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-boxdark-2"></div>
-				{/each}
-			</div>
-		{:else}
-			<TransactionList
-				transactions={transactionStore.transactions}
-				{categories}
-				onview={(t) => (viewTarget = t)}
-				onedit={(t) => (editTarget = t)}
-				ondelete={handleDelete}
-			/>
-		{/if}
+		<!-- Tabel selalu dirender: header tetap, hanya body yang berubah saat memuat. -->
+		<TransactionList
+			transactions={transactionStore.transactions}
+			{categories}
+			loading={transactionStore.loading}
+			onview={(t) => (viewTarget = t)}
+			onedit={(t) => (editTarget = t)}
+			ondelete={(t) => (deleteTarget = t)}
+		/>
 	</div>
 </div>
+
+<!-- Modal konfirmasi hapus -->
+{#if deleteTarget}
+	<Modal title="Hapus Transaksi" onclose={() => (deleteTarget = null)}>
+		<p class="text-sm text-slate-600 dark:text-slate-300">
+			Apakah Anda yakin akan menghapus transaksi ini
+			<strong class="font-semibold text-slate-900 dark:text-white">
+				“{deleteTarget.note || deleteTarget.categoryId}”
+			</strong>
+			({formatCurrency(deleteTarget.amount)})?
+		</p>
+		<p class="mt-1 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">Saldo dompet akan dikembalikan dan tindakan ini tidak dapat dibatalkan.</p>
+		<div class="mt-4 flex justify-end gap-2">
+			<Button variant="ghost" onclick={() => (deleteTarget = null)}>Batal</Button>
+			<Button variant="danger" loading={deleting} onclick={() => void handleDelete()}>Hapus</Button>
+		</div>
+	</Modal>
+{/if}
 
 {#if viewTarget}
 	<TransactionDetailModal
 		transaction={viewTarget}
 		{wallets}
 		{categories}
+		items={viewItems}
+		itemsLoading={viewItemsLoading}
 		onclose={() => (viewTarget = null)}
 		onedit={openEditFromDetail}
 	/>
