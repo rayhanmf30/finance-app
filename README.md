@@ -48,6 +48,8 @@ npm run dev
 | `/api/admin/categories/[id]` | PATCH/DELETE | (Admin) Edit nama/warna & hapus kategori sistem (dijaga dari pemakaian) |
 | `/api/admin/wallet-types` | GET/POST | (Admin) Semua tipe dompet + jumlah pemakaian; buat tipe baru |
 | `/api/admin/wallet-types/[code]` | PATCH/DELETE | (Admin) Edit label/aktif & hapus tipe dompet |
+| `/api/admin/wallets` | GET/POST | (Admin) Semua dompet milik pengguna (pemilik, tipe, saldo, pemakaian); buat dompet untuk pengguna |
+| `/api/admin/wallets/[id]` | PATCH/DELETE | (Admin) Edit nama/tipe/mata uang/ikut-total & hapus dompet (dijaga dari pemakaian transaksi) |
 
 ### Deployment: Supabase + Vercel
 
@@ -103,7 +105,7 @@ Jika password mengandung karakter khusus (`@`, `#`, `%`, dll.) tidak perlu di-en
 
 ### Panel Admin
 
-Akses `/admin` terbatas untuk user ber-role `admin`. Di sidebar, menu **Admin** kini berupa **tree** yang dapat dibuka/tutup dengan tiga sub-menu: **Akun** (`/admin?tab=users`), **Kategori** (`/admin?tab=categories`), dan **Tipe Dompet** (`/admin?tab=walletTypes`) — tab aktif tercermin pada query param URL. Role admin diberikan bila:
+Akses `/admin` terbatas untuk user ber-role `admin`. Di sidebar, menu **Admin** kini berupa **tree** yang dapat dibuka/tutup dengan empat sub-menu: **Akun** (`/admin?tab=users`), **Kategori** (`/admin?tab=categories`), **Tipe Dompet** (`/admin?tab=walletTypes`), dan **Dompet** (`/admin?tab=wallets`) — tab aktif tercermin pada query param URL. Role admin diberikan bila:
 
 - akun adalah **user pertama** yang mendaftar pada database kosong, **atau**
 - email akun tercantum di env `ADMIN_EMAILS` (dipisah koma, mis. `admin@contoh.com,owner@contoh.com`).
@@ -113,6 +115,7 @@ Kemampuan panel admin:
 - **Manajemen akun** — daftar semua akun (cari nama/email, statistik transaksi/dompet/budget), **blokir** akun dengan alasan (user terblokir tidak bisa login maupun memakai API — 403), buka blokir, jadikan/cabut role admin. Admin tidak bisa memblokir atau menurunkan dirinya sendiri (anti-lockout).
 - **Manajemen kategori** — lihat semua kategori (sistem + milik user) beserta jumlah pemakaian, tambah/edit **kategori sistem** (nama, tipe, warna, kategori induk), hapus kategori sistem (ditolak 409 bila masih dipakai transaksi, sub-kategori, budget, atau item transaksi).
 - **Manajemen tipe dompet** — tipe dompet kini dinamis di tabel `wallet_types` (awal: Tunai/Bank/E-Wallet/Kartu Kredit). Admin dapat menambah, mengubah label, mengaktifkan/menonaktifkan, serta menghapus tipe (ditolak 409 bila masih dipakai dompet). Kolom `wallets.type` kini FK ke `wallet_types(code)`. **Pemilih dompet** pada form transaksi otomatis mengelompokkan dompet per tipe (optgroup) memakai label terkini dari tabel `wallet_types` di admin.
+- **Manajemen dompet (tab Dompet)** — admin dapat melihat **seluruh tabel `wallets`** milik semua pengguna (pemilik, tipe, saldo, mata uang, jumlah transaksi), **membuat** dompet untuk pengguna mana pun (dengan saldo awal), **mengubah** nama/tipe/mata uang/penanda ikut-dihitung-total, dan **menghapus** dompet (ditolak 409 bila masih dipakai transaksi). Saldo berjalan tetap dikelola lewat transaksi agar selalu konsisten dengan riwayat.
 
 - **`transactions.ts`** — penyimpanan atomik (`db.begin`): `SELECT ... FOR UPDATE` pada dompet, insert transaksi, update saldo per tipe (INCOME/EXPENSE/TRANSFER), lalu **warning engine** budget.
 - **Warning engine** — untuk EXPENSE, budget terkait (kategori transaksi + seluruh leluhur melalui recursive CTE, plus budget global) dievaluasi terhadap periode berjalan (`period.ts`: harian/minggu ISO/bulanan/tahunan). Jika pemakaian ≥ threshold atau > limit, `INSERT INTO budget_alerts ... ON CONFLICT (budget_id, period_key, alert_level) DO NOTHING` — anti-spam per periode.
@@ -136,7 +139,7 @@ src/
 │   ├── transactions/           # Pencatatan & riwayat transaksi
 │   ├── receipt-scanner/        # Unggah & ekstraksi gambar resi
 │   └── budgets/                # Status & form atur budget
-└── routes/                     # Routing (/, /transactions, /transactions/new, /admin, /api/*)
+└── routes/                     # Routing (/, /transactions, /transactions/new, /admin, /api/*)  — Tambah Transaksi diakses dari tombol halaman transaksi
 ```
 
 ### Prinsip
@@ -164,7 +167,7 @@ Aplikasi dapat di-*install* ke home screen (Android/iOS/desktop):
 
 - **Dashboard:** Total saldo, pemasukan & pengeluaran bulan berjalan, grafik pengeluaran per kategori.
 - **Transaksi:** tambah/hapus transaksi (pemasukan/pengeluaran), filter bulan, pencarian kata kunci. Transaksi dapat **dilihat detail** (modal) dan **diedit** lewat modal edit (type TRANSFER hanya bisa dilihat, tidak diedit karena form belum mendukung dompet tujuan).
-- **Tambah Transaksi:** halaman khusus `/transactions/new` dengan form transaksi penuh, diakses lewat menu sidebar.
+- **Tambah Transaksi:** halaman khusus `/transactions/new` dengan form transaksi penuh, diakses lewat tombol "+ Tambah Transaksi" pada halaman transaksi.
 - **Scan Resi:** kini berupa **modal di halaman transaksi** (tombol "Scan Resi" di samping "Tambah Transaksi" — tidak lagi route terpisah). drag-and-drop gambar (jpg/png/webp, maks 5MB), kompresi sisi klien, ekstraksi terstruktur (merchant, tanggal, item, pajak/diskon, total), modal review dengan opsi simpan sebagai satu transaksi atau dipecah per item.
 
 > Ekstraksi struk saat ini masih *mock* di sisi server (`src/lib/server/receipts.ts`) — struktur sudah siap diganti provider Vision/OCR nyata tanpa mengubah frontend.
