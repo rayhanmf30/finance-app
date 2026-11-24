@@ -30,6 +30,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'common.discount': 'Diskon',
 		'common.subtotal': 'Subtotal',
 		'common.optional': 'opsional',
+		'budget.threshold': 'Threshold peringatan (%)',
 		'errors.generic': 'Terjadi kesalahan.',
 
 		// ---- Navigasi ----
@@ -92,7 +93,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'tx.failedUpdate': 'Gagal memperbarui transaksi.',
 		'tx.failedDelete': 'Gagal menghapus transaksi.',
 		'tx.deleteTitle': 'Hapus Transaksi',
-		'tx.deleteMessage': 'Apakah Anda yakin akan menghapus transaksi ini\n\t\t\t\t"{note}"',
+		'tx.deleteMessage': 'Apakah Anda yakin akan menghapus transaksi ini\n"{{note}}"?',
 		'tx.deleteWarning': 'Saldo dompet akan dikembalikan dan tindakan ini tidak dapat dibatalkan.',
 		'tx.detailTitle': 'Detail Transaksi',
 		'tx.editTitle': 'Edit Transaksi',
@@ -225,6 +226,9 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'admin.blockTitle': 'Blokir akun {{name}}',
 		'admin.blockReason': 'Alasan pemblokiran (opsional)',
 		'admin.blockPlaceholder': 'Contoh: tindakan mencurigakan',
+		'admin.userSearchPlaceholder': 'Cari nama atau email…',
+		'admin.stateActivated': 'diaktifkan',
+		'admin.stateDeactivated': 'dinonaktifkan',
 		'admin.blockNote': 'Pengguna yang diblokir tidak bisa login atau memakai API sampai blokir dibuka.',
 		'admin.passwordTitle': 'Ganti password akun {{name}}',
 		'admin.newPassword': 'Password baru',
@@ -312,6 +316,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'common.discount': 'Discount',
 		'common.subtotal': 'Subtotal',
 		'common.optional': 'optional',
+		'budget.threshold': 'Warning threshold (%)',
 		'errors.generic': 'Something went wrong.',
 
 		// ---- Navigation ----
@@ -374,7 +379,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'tx.failedUpdate': 'Failed to update transaction.',
 		'tx.failedDelete': 'Failed to delete transaction.',
 		'tx.deleteTitle': 'Delete Transaction',
-		'tx.deleteMessage': 'Are you sure you want to delete this transaction\n\t\t\t\t"{{note}}"',
+		'tx.deleteMessage': 'Are you sure you want to delete this transaction\n"{{note}}"?',
 		'tx.deleteWarning': 'The wallet balance will be refunded and this action cannot be undone.',
 		'tx.detailTitle': 'Transaction Detail',
 		'tx.editTitle': 'Edit Transaction',
@@ -507,6 +512,9 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'admin.blockTitle': 'Block account {{name}}',
 		'admin.blockReason': 'Blocking reason (optional)',
 		'admin.blockPlaceholder': 'e.g. suspicious activity',
+		'admin.userSearchPlaceholder': 'Search name or email…',
+		'admin.stateActivated': 'activated',
+		'admin.stateDeactivated': 'deactivated',
 		'admin.blockNote': 'Blocked users cannot log in or use the API until unblocked.',
 		'admin.passwordTitle': 'Change password for {{name}}',
 		'admin.newPassword': 'New password',

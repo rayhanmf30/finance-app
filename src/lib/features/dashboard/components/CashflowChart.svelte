@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { CategoryBreakdown } from '#lib/shared/models/domain';
 	import { formatCurrency } from '#lib/shared/pipes/currency';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 
 	interface Props {
 		breakdown: CategoryBreakdown[];
@@ -10,7 +11,7 @@
 </script>
 
 {#if breakdown.length === 0}
-	<p class="py-8 text-center text-sm text-slate-400 dark:text-metadark">Belum ada pengeluaran bulan ini.</p>
+	<p class="py-8 text-center text-sm text-slate-400 dark:text-metadark">{i18n.t('dash.noExpense')}</p>
 {:else}
 	<div class="space-y-4">
 		{#each breakdown as item (item.categoryId)}

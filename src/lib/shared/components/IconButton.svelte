@@ -9,12 +9,14 @@
 		label: string;
 		variant?: 'default' | 'danger' | 'primary';
 		type?: 'button' | 'submit';
+		/** sm: tombol aksi baris tabel; md: tombol utama (submit form, header). */
+		size?: 'sm' | 'md';
 		disabled?: boolean;
 		loading?: boolean;
 		onclick?: () => void;
 	}
 
-	let { icon, label, variant = 'default', type = 'button', disabled = false, loading = false, onclick }: Props = $props();
+	let { icon, label, variant = 'default', type = 'button', size = 'sm', disabled = false, loading = false, onclick }: Props = $props();
 
 	const variants = {
 		default: 'text-slate-400 dark:text-metadark hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-boxdark dark:hover:text-indigo-400',
@@ -29,7 +31,7 @@
 	title={label}
 	disabled={disabled || loading}
 	{onclick}
-	class="cursor-pointer rounded-md p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 {variants[variant]}"
+	class="cursor-pointer rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50 {size === 'md' ? 'px-4 py-2.5' : 'p-1.5 rounded-md'} {variants[variant]}"
 >
 	{#if loading}
 		<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">

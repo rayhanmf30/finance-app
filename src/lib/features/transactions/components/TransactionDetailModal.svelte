@@ -3,6 +3,7 @@
 	import type { Category, Transaction, Wallet } from '#lib/shared/models/domain';
 	import { formatCurrency } from '#lib/shared/pipes/currency';
 	import { formatDate } from '#lib/shared/pipes/date';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 
 	interface Props {
 		transaction: Transaction;
@@ -26,24 +27,28 @@
 	const categoryName = $derived(categories.find((c) => c.id === transaction.categoryId)?.name ?? null);
 
 	const typeLabel = $derived(
-		transaction.type === 'INCOME' ? 'Pemasukan' : transaction.type === 'TRANSFER' ? 'Transfer' : 'Pengeluaran'
+		transaction.type === 'INCOME'
+			? i18n.t('type.income')
+			: transaction.type === 'TRANSFER'
+				? i18n.t('type.transfer')
+				: i18n.t('type.expense')
 	);
 
 	const rows: { label: string; value: string }[] = $derived.by(() => {
 		const list = [
-			{ label: 'Tipe', value: typeLabel },
-			{ label: 'Nominal', value: formatCurrency(transaction.amount) },
-			{ label: 'Tanggal', value: formatDate(transaction.transactionDate) },
-			{ label: 'Dompet', value: walletName }
+			{ label: i18n.t('tx.labelType'), value: typeLabel },
+			{ label: i18n.t('tx.labelAmount'), value: formatCurrency(transaction.amount) },
+			{ label: i18n.t('tx.labelDate'), value: formatDate(transaction.transactionDate) },
+			{ label: i18n.t('tx.labelWallet'), value: walletName }
 		];
-		if (destinationName) list.push({ label: 'Dompet tujuan', value: destinationName });
-		if (categoryName) list.push({ label: 'Kategori', value: categoryName });
-		list.push({ label: 'Catatan', value: transaction.note || '—' });
+		if (destinationName) list.push({ label: i18n.t('tx.labelDestination'), value: destinationName });
+		if (categoryName) list.push({ label: i18n.t('tx.labelCategory'), value: categoryName });
+		list.push({ label: i18n.t('tx.labelNote'), value: transaction.note || '—' });
 		return list;
 	});
 </script>
 
-<Modal title="Detail Transaksi" {onclose}>
+<Modal title={i18n.t('tx.detailTitle')} {onclose}>
 	<dl class="divide-y divide-slate-100 dark:divide-slate-700/60">
 		{#each rows as row (row.label)}
 			<div class="flex justify-between gap-4 py-2.5 text-sm">
@@ -53,18 +58,20 @@
 		{/each}
 	</dl>
 	{#if itemsLoading}
-		<p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Memuat rincian barang…</p>
+		<p class="mt-4 text-sm text-slate-500 dark:text-slate-400">{i18n.t('tx.itemsLoading')}</p>
 	{:else if displayItems.length > 0}
 		<div class="mt-4 rounded-lg bg-slate-50 dark:bg-boxdark p-3">
-			<p class="mb-2 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 dark:text-metadark">Rincian barang ({displayItems.length})</p>
+			<p class="mb-2 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 dark:text-metadark">
+				{i18n.t('scan.itemsCount', { count: displayItems.length })}
+			</p>
 			<table class="w-full text-left text-xs">
 				<thead class="text-slate-400 dark:text-metadark">
 					<tr>
-						<th class="py-1">Barang</th>
-						<th class="py-1 text-right">Qty</th>
-						<th class="py-1 text-right">Harga</th>
-						<th class="py-1 text-right">Diskon</th>
-						<th class="py-1 text-right">Subtotal</th>
+						<th class="py-1">{i18n.t('common.item')}</th>
+						<th class="py-1 text-right">{i18n.t('common.qty')}</th>
+						<th class="py-1 text-right">{i18n.t('common.price')}</th>
+						<th class="py-1 text-right">{i18n.t('common.discount')}</th>
+						<th class="py-1 text-right">{i18n.t('common.subtotal')}</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-slate-200 dark:divide-slate-700/60 text-slate-700 dark:text-slate-200">
@@ -83,7 +90,9 @@
 	{/if}
 	{#if onedit}
 		<div class="mt-4 flex justify-end">
-			<Button onclick={() => onedit?.(transaction)}>Edit Transaksi</Button>
+			<Button icon="edit" label={i18n.t('tx.editTransaction')} onclick={() => onedit?.(transaction)}>
+				{i18n.t('tx.editTransaction')}
+			</Button>
 		</div>
 	{/if}
 </Modal>

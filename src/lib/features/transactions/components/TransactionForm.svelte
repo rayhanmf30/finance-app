@@ -4,6 +4,7 @@
 	import Input from '#lib/shared/components/Input.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
 	import WalletSelect from '#lib/shared/components/WalletSelect.svelte';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 
 	interface Props {
 		categories: Category[];
@@ -89,7 +90,7 @@
 				: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
 			onclick={() => (type = 'EXPENSE')}
 		>
-			Pengeluaran
+			{i18n.t('type.expense')}
 		</button>
 		<button
 			type="button"
@@ -98,7 +99,7 @@
 				: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
 			onclick={() => (type = 'INCOME')}
 		>
-			Pemasukan
+			{i18n.t('type.income')}
 		</button>
 		<button
 			type="button"
@@ -107,38 +108,38 @@
 				: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
 			onclick={() => (type = 'TRANSFER')}
 		>
-			Transfer
+			{i18n.t('type.transfer')}
 		</button>
 	</div>
 
-	<Input label="Nominal" type="number" min="1" step="any" bind:value={amount} required />
-	<Input label="Tanggal" type="date" bind:value={date} required />
+	<Input label={i18n.t('tx.labelAmount')} type="number" min="1" step="any" bind:value={amount} required />
+	<Input label={i18n.t('tx.labelDate')} type="date" bind:value={date} required />
 	<WalletSelect wallets={wallets} bind:value={walletId} />
 	{#if type === 'TRANSFER'}
 		<Select
-			label="Dompet Tujuan"
+			label={i18n.t('tx.labelDestination')}
 			required
 			options={[
-				{ value: '', label: 'Pilih dompet tujuan…' },
+				{ value: '', label: i18n.t('tx.selectDestination') },
 				...destinationOptions
 			]}
 			bind:value={destinationWalletId}
 		/>
 	{:else}
 		<Select
-			label="Kategori"
+			label={i18n.t('tx.labelCategory')}
 			options={[
-				{ value: '', label: 'Tanpa kategori' },
+				{ value: '', label: i18n.t('tx.noCategory') },
 				...visibleCategories.map((c) => ({ value: c.id, label: c.name }))
 			]}
 			bind:value={categoryId}
 		/>
 	{/if}
-	<Input label="Catatan (opsional)" placeholder="Keterangan singkat" bind:value={note} />
+	<Input placeholder={i18n.t('tx.notePlaceholder')} label={`${i18n.t('tx.labelNote')} (${i18n.t('common.optional')})`} bind:value={note} />
 
 	<div class="pt-2">
 		<Button type="submit" variant="primary" loading={submitting}>
-			{initial ? 'Simpan Perubahan' : type === 'TRANSFER' ? 'Pindahkan Saldo' : 'Simpan Transaksi'}
+			{initial ? i18n.t('common.save') : type === 'TRANSFER' ? i18n.t('type.transfer') : i18n.t('scan.saveTransaction')}
 		</Button>
 	</div>
 </form>

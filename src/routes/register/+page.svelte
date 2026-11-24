@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { authService } from '#lib/core/auth/auth.service.svelte';
-	import { Button } from '#lib/shared/components';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
+	import { IconButton } from '#lib/shared/components';
 
 	let name = $state('');
 	let email = $state('');
@@ -13,11 +14,11 @@
 		event.preventDefault();
 		errorMessage = '';
 		if (!name.trim() || !email.trim() || !password) {
-			errorMessage = 'Semua kolom wajib diisi.';
+			errorMessage = i18n.t('auth.allFieldsRequired');
 			return;
 		}
 		if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-			errorMessage = 'Password minimal 8 karakter, kombinasi huruf dan angka.';
+			errorMessage = i18n.t('auth.pwRule');
 			return;
 		}
 		submitting = true;
@@ -25,7 +26,7 @@
 			await authService.register(name.trim(), email.trim(), password);
 			await goto('/');
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Gagal mendaftar. Coba lagi.';
+			errorMessage = err instanceof Error ? i18n.displayError(err) : i18n.t('auth.registerFailed');
 		} finally {
 			submitting = false;
 		}
@@ -33,32 +34,32 @@
 </script>
 
 <svelte:head>
-	<title>Daftar — Finance App</title>
+	<title>{i18n.t('auth.pageRegister')} — Finance App</title>
 </svelte:head>
 
 <div class="mx-auto mt-10 max-w-md">
 	<div class="rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-boxdark-2 p-6 shadow-sm sm:p-8">
 		<div class="mb-6 text-center">
 			<div class="text-3xl">💰</div>
-			<h1 class="mt-2 text-xl font-bold text-slate-900 dark:text-white">Buat Akun Baru</h1>
-			<p class="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Anda akan mendapat dompet awal & kategori standar</p>
+			<h1 class="mt-2 text-xl font-bold text-slate-900 dark:text-white">{i18n.t('auth.registerHeading')}</h1>
+			<p class="mt-1 text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('auth.registerSubtitle')}</p>
 		</div>
 
 		<form onsubmit={submit} class="space-y-4">
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('auth.name')}</span>
 				<input
 					type="text"
 					required
 					autocomplete="name"
-					placeholder="Nama lengkap"
+					placeholder={i18n.t('auth.namePlaceholder')}
 					bind:value={name}
 					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
 			</label>
 
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('auth.email')}</span>
 				<input
 					type="email"
 					required
@@ -70,12 +71,12 @@
 			</label>
 
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('auth.password')}</span>
 				<input
 					type="password"
 					required
 					autocomplete="new-password"
-					placeholder="Minimal 8 karakter, huruf + angka"
+					placeholder={i18n.t('auth.pwPlaceholder')}
 					bind:value={password}
 					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
@@ -85,14 +86,19 @@
 				<p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{errorMessage}</p>
 			{/if}
 
-			<Button type="submit" loading={submitting}>
-				{submitting ? 'Memproses…' : 'Daftar'}
-			</Button>
+			<IconButton
+				type="submit"
+				variant="primary"
+				icon="plus"
+				size="md"
+				label={submitting ? i18n.t('common.processing') : i18n.t('auth.register')}
+				loading={submitting}
+			/>
 		</form>
 
 		<p class="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
-			Sudah punya akun?
-			<a href="/login" class="font-medium text-indigo-600 hover:text-indigo-700">Masuk</a>
+			{i18n.t('auth.haveAccount')}
+			<a href="/login" class="font-medium text-indigo-600 hover:text-indigo-700">{i18n.t('auth.login')}</a>
 		</p>
 	</div>
 </div>

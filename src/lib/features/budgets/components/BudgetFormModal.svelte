@@ -3,6 +3,7 @@
 	import { Button, Modal } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 
 	interface Props {
 		categories: Category[];
@@ -19,10 +20,10 @@
 	let warningThresholdPct = $state<number>(80);
 
 	const periodOptions: { value: BudgetPeriodType; label: string }[] = [
-		{ value: 'DAILY', label: 'Harian' },
-		{ value: 'WEEKLY', label: 'Mingguan' },
-		{ value: 'MONTHLY', label: 'Bulanan' },
-		{ value: 'YEARLY', label: 'Tahunan' }
+		{ value: 'DAILY', label: i18n.t('period.daily') },
+		{ value: 'WEEKLY', label: i18n.t('period.weekly') },
+		{ value: 'MONTHLY', label: i18n.t('period.monthly') },
+		{ value: 'YEARLY', label: i18n.t('period.yearly') }
 	];
 
 	function submit(event: SubmitEvent) {
@@ -37,22 +38,22 @@
 	}
 </script>
 
-<Modal title="Atur Budget" onclose={onclose}>
+<Modal title={i18n.t('dash.setupBudget')} onclose={onclose}>
 	<form class="space-y-4" onsubmit={submit}>
 		<Select
-			label="Kategori"
+			label={i18n.t('tx.labelCategory')}
 			options={[
-				{ value: '', label: 'Total semua pengeluaran (global)' },
+				{ value: '', label: i18n.t('dash.globalCategory') },
 				...categories
 					.filter((c) => c.type === 'EXPENSE')
 					.map((c) => ({ value: c.id, label: c.name }))
 			]}
 			bind:value={categoryId}
 		/>
-		<Select label="Periode" options={periodOptions} bind:value={periodType} />
-		<Input label="Limit (Rp)" type="number" min="1" step="any" bind:value={limitAmount} required />
+		<Select label={i18n.t('tx.labelDate')} options={periodOptions} bind:value={periodType} />
+		<Input label={i18n.t('tx.labelAmount')} type="number" min="1" step="any" bind:value={limitAmount} required />
 		<Input
-			label="Threshold peringatan (%)"
+			label={i18n.t('budget.threshold')}
 			type="number"
 			min="1"
 			max="100"
@@ -62,7 +63,7 @@
 
 		<div class="pt-2">
 			<Button type="submit" variant="primary" loading={saving}>
-				{saving ? 'Menyimpan…' : 'Simpan Budget'}
+				{saving ? i18n.t('scan.saving') : i18n.t('common.save')}
 			</Button>
 		</div>
 	</form>
