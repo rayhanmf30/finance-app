@@ -47,12 +47,13 @@
 	interface NavLink {
 		href: string;
 		labelKey: string;
-		icon: 'dashboard' | 'transactions' | 'admin';
+		icon: 'dashboard' | 'transactions' | 'budget' | 'admin';
 	}
 
 	const links: NavLink[] = [
 		{ href: '/', labelKey: 'nav.dashboard', icon: 'dashboard' },
-		{ href: '/transactions', labelKey: 'nav.transactions', icon: 'transactions' }
+		{ href: '/transactions', labelKey: 'nav.transactions', icon: 'transactions' },
+		{ href: '/budgets', labelKey: 'nav.budget', icon: 'budget' }
 	];
 
 	const navLinks = $derived<NavLink[]>(links);
@@ -78,6 +79,7 @@
 	const initialValues: Record<NavLink['icon'], string> = {
 		dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
 		transactions: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l2.3 2.3a1 1 0 00.7.3H17a1 1 0 00.7-.3L20 10M9 19a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z',
+		budget: 'M12 21a9 9 0 110-18 9 9 0 010 18zm0-3a6 6 0 100-12 6 6 0 000 12zm0-3a3 3 0 100-6 3 3 0 000 6z',
 		admin: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
 	};
 

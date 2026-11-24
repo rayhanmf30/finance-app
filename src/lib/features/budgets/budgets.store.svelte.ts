@@ -22,6 +22,17 @@ class BudgetStore {
 		await budgetService.create(input);
 		await this.refresh();
 	}
+
+	/** UPDATE sejati — id budget tidak berubah. */
+	async update(id: string, input: BudgetInput): Promise<void> {
+		await budgetService.update(id, input);
+		await this.refresh();
+	}
+
+	async remove(id: string): Promise<void> {
+		await budgetService.remove(id);
+		await this.refresh();
+	}
 }
 
 export const budgetStore = new BudgetStore();

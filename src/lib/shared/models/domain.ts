@@ -133,6 +133,8 @@ export interface BudgetStatusRow {
 	categoryNames: string[];
 	periodType: BudgetPeriodType;
 	periodKey: string;
+	/** Persentase ambang peringatan — diperlukan untuk prefill mode edit. */
+	warningThresholdPct: number;
 	limitAmount: number;
 	spentAmount: number;
 	remainingAmount: number;

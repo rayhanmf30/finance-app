@@ -1,6 +1,7 @@
 <script lang="ts">
-	import type { BudgetInput, BudgetPeriodType, Category } from '#lib/shared/models/domain';
+	import type { BudgetInput, BudgetPeriodType, BudgetStatusRow, Category } from '#lib/shared/models/domain';
 	import { Button, Modal } from '#lib/shared/components/index';
+	import AmountInput from '#lib/shared/components/AmountInput.svelte';
 	import Input from '#lib/shared/components/Input.svelte';
 	import Select from '#lib/shared/components/Select.svelte';
 	import Icon from '#lib/shared/components/Icon.svelte';
@@ -8,18 +9,26 @@
 
 	interface Props {
 		categories: Category[];
+		/** Diisi saat mode edit (prefill nilai lama); null/undefined = mode tambah. */
+		initial?: BudgetStatusRow | null;
 		saving?: boolean;
-		onsave: (input: BudgetInput) => void;
+		onsave: (input: BudgetInput) => void | Promise<void>;
 		onclose: () => void;
 	}
 
-	let { categories, saving = false, onsave, onclose }: Props = $props();
+	let { categories, initial = null, saving = false, onsave, onclose }: Props = $props();
 
-	/** Multi-kategori: array kosong berarti budget global (semua pengeluaran). */
-	let selectedIds = $state<string[]>([]);
-	let periodType = $state<BudgetPeriodType>('MONTHLY');
-	let limitAmount = $state<number>(0);
-	let warningThresholdPct = $state<number>(80);
+	// Prefill mode edit dibaca sekali saat inisialisasi (untrack).
+	// svelte-ignore state_referenced_locally
+	let selectedIds = $state<string[]>(initial ? [...initial.categoryIds] : []);
+	// svelte-ignore state_referenced_locally
+	let periodType = $state<BudgetPeriodType>(initial?.periodType ?? 'MONTHLY');
+	// svelte-ignore state_referenced_locally
+	let limitAmount = $state<number>(initial?.limitAmount ?? 0);
+	// svelte-ignore state_referenced_locally
+	let warningThresholdPct = $state<number>(initial?.warningThresholdPct ?? 80);
+
+	const isEdit = $derived(initial !== null);
 
 	const expenseCategories = $derived(categories.filter((c) => c.type === 'EXPENSE'));
 
@@ -41,11 +50,11 @@
 		event.preventDefault();
 		if (saving) return; // anti double-klik: abaikan klik saat proses berjalan
 		if (limitAmount <= 0) return;
-		onsave({ categoryIds: selectedIds, periodType, limitAmount, warningThresholdPct });
+		void onsave({ categoryIds: selectedIds, periodType, limitAmount, warningThresholdPct });
 	}
 </script>
 
-<Modal title={i18n.t('dash.setupBudget')} onclose={onclose}>
+<Modal title={isEdit ? i18n.t('budget.editTitle') : i18n.t('dash.setupBudget')} onclose={onclose}>
 	<form class="space-y-4" onsubmit={submit}>
 		<fieldset disabled={saving}>
 			<legend class="mb-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -82,15 +91,9 @@
 			</p>
 		</fieldset>
 
-		<Select label={i18n.t('tx.labelDate')} options={periodOptions} bind:value={periodType} />
-		<Input
-			label={i18n.t('tx.labelAmount')}
-			type="number"
-			min="1"
-			step="any"
-			bind:value={limitAmount}
-			required
-		/>
+		<Select label={i18n.t('budget.period')} options={periodOptions} bind:value={periodType} />
+		<!-- Nominal: AmountInput dengan separator ribuan; nilai terkirim tetap number. -->
+		<AmountInput label={i18n.t('tx.labelAmount')} bind:value={limitAmount} min={1} required />
 		<Input
 			label={i18n.t('budget.threshold')}
 			type="number"
