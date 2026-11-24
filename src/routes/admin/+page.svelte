@@ -4,16 +4,20 @@
 	import { authService } from '#lib/core/auth/auth.service.svelte';
 	import { adminService } from '#lib/features/admin/admin.service';
 	import { Button, Card, Modal } from '#lib/shared/components';
+	import ActionMenu, { type MenuItem } from '#lib/shared/components/ActionMenu.svelte';
+	import ConfirmModal from '#lib/shared/components/ConfirmModal.svelte';
+	import IconButton from '#lib/shared/components/IconButton.svelte';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 	import { formatCurrency } from '#lib/shared/pipes/currency';
 	import type { AdminCategory, AdminUser, AdminWallet, WalletTypeInfo } from '#lib/shared/models/domain';
 
 	type Tab = 'users' | 'categories' | 'walletTypes' | 'wallets';
 
-	const tabs: { id: Tab; label: string }[] = [
-		{ id: 'users', label: 'Akun' },
-		{ id: 'categories', label: 'Kategori' },
-		{ id: 'walletTypes', label: 'Tipe Dompet' },
-		{ id: 'wallets', label: 'Dompet' }
+	const tabs: { id: Tab; labelKey: string }[] = [
+		{ id: 'users', labelKey: 'admin.tab.users' },
+		{ id: 'categories', labelKey: 'admin.tab.categories' },
+		{ id: 'walletTypes', labelKey: 'admin.tab.walletTypes' },
+		{ id: 'wallets', labelKey: 'admin.tab.wallets' }
 	];
 
 	const VALID_TABS: Tab[] = ['users', 'categories', 'walletTypes', 'wallets'];
@@ -50,11 +54,13 @@
 	let categoryForm = $state<{ id: string; name: string; type: 'INCOME' | 'EXPENSE'; color: string; parentId: string }>(
 		{ id: '', name: '', type: 'EXPENSE', color: '#64748b', parentId: '' }
 	);
+	let categoryDeleteTarget = $state<AdminCategory | null>(null);
 
 	// ---- Tipe Dompet ----
 	let walletTypes = $state<WalletTypeInfo[]>([]);
 	let walletModalMode = $state<'add' | 'edit' | null>(null);
 	let walletForm = $state<{ code: string; label: string }>({ code: '', label: '' });
+	let walletTypeDeleteTarget = $state<WalletTypeInfo | null>(null);
 
 	// ---- Dompet (tabel wallets) ----
 	let adminWallets = $state<AdminWallet[]>([]);
@@ -68,6 +74,7 @@
 		initialBalance: string;
 		isIncludedInTotal: boolean;
 	}>({ id: '', userId: '', name: '', type: '', currency: 'IDR', initialBalance: '0', isIncludedInTotal: true });
+	let dompetDeleteTarget = $state<AdminWallet | null>(null);
 
 	const systemCategories = $derived(categories.filter((c) => c.ownerId === null));
 
@@ -78,7 +85,7 @@
 	}
 
 	function showError(err: unknown) {
-		error = err instanceof Error ? err.message : 'Terjadi kesalahan.';
+		error = err instanceof Error ? err.message || i18n.t('errors.generic') : i18n.t('errors.generic');
 	}
 
 	async function loadUsers() {
@@ -162,23 +169,23 @@
 		void withAction(async () => {
 			await adminService.updateUser(target.id, { isBlocked: true, blockReason });
 			await loadUsers();
-		}, `Akun ${target.name} berhasil diblokir.`);
+		}, i18n.t('admin.blockedAccount', { name: target.name }));
 	}
 
 	function unblock(u: AdminUser) {
 		void withAction(async () => {
 			await adminService.updateUser(u.id, { isBlocked: false });
 			await loadUsers();
-		}, `Blokir ${u.name} dibuka.`);
+		}, i18n.t('admin.unblockedAccount', { name: u.name }));
 	}
 
 	function setRole(u: AdminUser, role: 'user' | 'admin') {
 		if (acting) return;
-		const verb = role === 'admin' ? 'dijadikan admin' : 'dicabut akses adminnya';
+		const action = role === 'admin' ? i18n.t('admin.roleMadeAdmin') : i18n.t('admin.roleRevoked');
 		void withAction(async () => {
 			await adminService.updateUser(u.id, { role });
 			await loadUsers();
-		}, `${u.name} ${verb}.`);
+		}, i18n.t('admin.roleChanged', { name: u.name, action }));
 	}
 
 	function openPasswordModal(u: AdminUser) {
@@ -195,14 +202,29 @@
 			!/[a-zA-Z]/.test(newPassword) ||
 			!/[0-9]/.test(newPassword)
 		) {
-			error = 'Password minimal 8 karakter dan mengandung huruf serta angka.';
+			error = i18n.t('admin.pwRule');
 			return;
 		}
 		passwordTarget = null;
 		void withAction(async () => {
 			await adminService.changePassword(target.id, newPassword);
 			newPassword = '';
-		}, `Password akun ${target.name} berhasil diganti.`);
+		}, i18n.t('admin.passwordChanged', { name: target.name }));
+	}
+
+	/** Aksi baris akun: 5 aksi → otomatis menu titik tiga via ActionMenu. */
+	function userActions(u: AdminUser): MenuItem[] {
+		return [
+			u.isBlocked
+				? { icon: 'unlock', label: i18n.t('admin.unblock'), onclick: () => unblock(u) }
+				: { icon: 'ban', label: i18n.t('admin.block'), danger: true, onclick: () => openBlockModal(u) },
+			u.role === 'admin'
+				? { icon: 'shield', label: i18n.t('admin.revokeAdmin'), onclick: () => setRole(u, 'user') }
+				: { icon: 'shield', label: i18n.t('admin.makeAdmin'), onclick: () => setRole(u, 'admin') },
+			{ icon: 'edit', label: i18n.t('common.edit'), onclick: () => openAccountEdit(u) },
+			{ icon: 'key', label: i18n.t('admin.changePassword'), onclick: () => openPasswordModal(u) },
+			{ icon: 'trash', label: i18n.t('common.delete'), danger: true, disabled: acting, onclick: () => (deleteTarget = u) }
+		];
 	}
 
 	// ---- Akun: tambah / edit / hapus ----
@@ -224,7 +246,7 @@
 			mode === 'add' &&
 			(form.password.length < 8 || !/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password))
 		) {
-			error = 'Password minimal 8 karakter dan mengandung huruf serta angka.';
+			error = i18n.t('admin.pwRule');
 			return;
 		}
 		void withAction(async () => {
@@ -240,9 +262,10 @@
 			}
 			accountModalMode = null;
 			await loadUsers();
-		}, mode === 'add' ? 'Akun berhasil dibuat.' : 'Akun berhasil diperbarui.');
+		}, mode === 'add' ? i18n.t('admin.createdAccount') : i18n.t('admin.updatedAccount'));
 	}
 
+	/** Hapus akun WAJIB lewat konfirmasi (ConfirmModal). */
 	function confirmDeleteUser() {
 		if (!deleteTarget || deletingUser) return;
 		const target = deleteTarget;
@@ -251,7 +274,7 @@
 			await adminService.deleteUser(target.id);
 			deleteTarget = null;
 			await loadUsers();
-		}, `Akun ${target.name} berhasil dihapus.`).finally(() => (deletingUser = false));
+		}, i18n.t('admin.deletedAccount', { name: target.name })).finally(() => (deletingUser = false));
 	}
 
 	// ---- Kategori actions ----
@@ -282,15 +305,21 @@
 			}
 			categoryModalMode = null;
 			await loadCategories();
-		}, mode === 'add' ? 'Kategori berhasil ditambahkan.' : 'Kategori berhasil diperbarui.');
+		}, mode === 'add' ? i18n.t('admin.createdCategory') : i18n.t('admin.updatedCategory'));
 	}
 
-	function deleteCategory(c: AdminCategory) {
-		if (acting) return;
+	function requestDeleteCategory(c: AdminCategory) {
+		categoryDeleteTarget = c;
+	}
+
+	function confirmDeleteCategory() {
+		if (!categoryDeleteTarget || acting) return;
+		const target = categoryDeleteTarget;
+		categoryDeleteTarget = null;
 		void withAction(async () => {
-			await adminService.deleteCategory(c.id);
+			await adminService.deleteCategory(target.id);
 			await loadCategories();
-		}, `Kategori "${c.name}" berhasil dihapus.`);
+		}, i18n.t('admin.deletedCategory', { name: target.name }));
 	}
 
 	// ---- Tipe dompet actions ----
@@ -317,22 +346,29 @@
 			}
 			walletModalMode = null;
 			await loadWalletTypes();
-		}, mode === 'add' ? 'Tipe dompet berhasil ditambahkan.' : 'Tipe dompet berhasil diperbarui.');
+		}, mode === 'add' ? i18n.t('admin.createdWalletType') : i18n.t('admin.updatedWalletType'));
 	}
 
 	function toggleWalletActive(w: WalletTypeInfo) {
+		const state = w.isActive ? i18n.t('admin.stateDeactivated') : i18n.t('admin.stateActivated');
 		void withAction(async () => {
 			await adminService.updateWalletType(w.code, { isActive: !w.isActive });
 			await loadWalletTypes();
-		}, `Tipe dompet "${w.label}" ${w.isActive ? 'dinonaktifkan' : 'diaktifkan'}.`);
+		}, i18n.t('admin.toggledWalletType', { name: w.label, state }));
 	}
 
-	function deleteWalletType(w: WalletTypeInfo) {
-		if (acting) return;
+	function requestDeleteWalletType(w: WalletTypeInfo) {
+		walletTypeDeleteTarget = w;
+	}
+
+	function confirmDeleteWalletType() {
+		if (!walletTypeDeleteTarget || acting) return;
+		const target = walletTypeDeleteTarget;
+		walletTypeDeleteTarget = null;
 		void withAction(async () => {
-			await adminService.deleteWalletType(w.code);
+			await adminService.deleteWalletType(target.code);
 			await loadWalletTypes();
-		}, `Tipe dompet "${w.label}" berhasil dihapus.`);
+		}, i18n.t('admin.deletedWalletType', { name: target.label }));
 	}
 
 	// ---- Dompet (tabel wallets) actions ----
@@ -364,7 +400,7 @@
 		const mode = dompetModalMode;
 		const initialBalance = Number(form.initialBalance);
 		if (!Number.isFinite(initialBalance) || initialBalance < 0) {
-			error = 'Saldo awal wajib angka >= 0.';
+			error = i18n.t('admin.balanceRule');
 			return;
 		}
 		void withAction(async () => {
@@ -386,24 +422,30 @@
 			}
 			dompetModalMode = null;
 			await loadAdminWallets();
-		}, mode === 'add' ? 'Dompet berhasil ditambahkan.' : 'Dompet berhasil diperbarui.');
+		}, mode === 'add' ? i18n.t('admin.createdWallet') : i18n.t('admin.updatedWallet'));
 	}
 
-	function deleteAdminWallet(w: AdminWallet) {
-		if (acting) return;
+	function requestDeleteAdminWallet(w: AdminWallet) {
+		dompetDeleteTarget = w;
+	}
+
+	function confirmDeleteAdminWallet() {
+		if (!dompetDeleteTarget || acting) return;
+		const target = dompetDeleteTarget;
+		dompetDeleteTarget = null;
 		void withAction(async () => {
-			await adminService.deleteWallet(w.id);
+			await adminService.deleteWallet(target.id);
 			await loadAdminWallets();
-		}, `Dompet "${w.name}" berhasil dihapus.`);
+		}, i18n.t('admin.deletedWallet', { name: target.name }));
 	}
 </script>
 
-<svelte:head><title>Admin — FinanceApp</title></svelte:head>
+<svelte:head><title>{i18n.t('admin.title')} — FinanceApp</title></svelte:head>
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-			Panel Admin — {tabs.find((t) => t.id === activeTab)?.label ?? 'Akun'}
+			{i18n.t('admin.title')} — {i18n.t(tabs.find((t) => t.id === activeTab)?.labelKey ?? 'admin.tab.users')}
 		</h1>
 	</div>
 
@@ -415,11 +457,11 @@
 	{/if}
 
 	{#if loading}
-		<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Memuat…</p>
+		<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('common.loading')}</p>
 	{:else if activeTab === 'users'}
 		<Card>
 			<form
-				class="mb-4 flex flex-wrap items-center gap-2"
+				class="mb-4 flex flex-wrap items-end gap-2"
 				onsubmit={(e) => {
 					e.preventDefault();
 					void applyUserSearch();
@@ -427,22 +469,22 @@
 			>
 				<input
 					type="search"
-					placeholder="Cari nama atau email…"
+					placeholder={i18n.t('admin.userSearchPlaceholder')}
 					bind:value={searchQuery}
-					class="min-w-52 flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					class="min-w-52 flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
-				<Button type="submit" variant="secondary" loading={searchingUser}>Cari</Button>
-				<Button variant="primary" onclick={openAccountAdd}>+ Tambah Akun</Button>
+				<IconButton type="submit" size="md" icon="search" label={i18n.t('common.search')} loading={searchingUser} />
+				<IconButton size="md" variant="primary" icon="plus" label={i18n.t('admin.addAccount')} onclick={openAccountAdd} />
 			</form>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
 						<tr>
-							<th class="px-2 py-2">Pengguna</th>
-							<th class="px-2 py-2">Role</th>
-							<th class="px-2 py-2">Data</th>
-							<th class="px-2 py-2">Status</th>
-							<th class="px-2 py-2 text-right">Aksi</th>
+							<th class="px-2 py-2">{i18n.t('admin.thUser')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thRole')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thData')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thStatus')}</th>
+							<th class="px-2 py-2 text-right">{i18n.t('common.actions')}</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -450,50 +492,39 @@
 							{@const isSelf = u.id === authService.currentUser?.id}
 							<tr>
 								<td class="px-2 py-3">
-									<p class="font-medium text-slate-900 dark:text-white">{u.name}{isSelf ? ' (Anda)' : ''}</p>
+									<p class="font-medium text-slate-900 dark:text-white">{u.name}{isSelf ? ` ${i18n.t('admin.self')}` : ''}</p>
 									<p class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{u.email}</p>
 								</td>
 								<td class="px-2 py-3">
 									<span
 										class="rounded-full px-2 py-0.5 text-xs font-semibold {u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 dark:bg-boxdark-2 text-slate-600 dark:text-slate-300'}"
 									>
-										{u.role === 'admin' ? 'Admin' : 'User'}
+										{u.role === 'admin' ? i18n.t('admin.roleAdmin') : i18n.t('admin.roleUser')}
 									</span>
 								</td>
 								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
-									{u.transactionCount} transaksi · {u.walletCount} dompet · {u.budgetCount} budget
+									{i18n.t('admin.userStats', { t: u.transactionCount, w: u.walletCount, b: u.budgetCount })}
 								</td>
 								<td class="px-2 py-3">
 									{#if u.isBlocked}
-										<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Diblokir</span>
+										<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">{i18n.t('status.blocked')}</span>
 										<p class="mt-1 text-xs text-red-500">{u.blockReason}</p>
 									{:else}
-										<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Aktif</span>
+										<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{i18n.t('status.active')}</span>
 									{/if}
 								</td>
 								<td class="px-2 py-3">
-									<div class="flex flex-wrap justify-end gap-1">
+									<div class="flex justify-end">
 										{#if isSelf}
 											<span class="px-2 text-xs text-slate-400 dark:text-metadark">—</span>
 										{:else}
-											{#if u.isBlocked}
-												<Button variant="secondary" onclick={() => unblock(u)}>Buka Blokir</Button>
-											{:else}
-												<Button variant="danger" onclick={() => openBlockModal(u)}>Blokir</Button>
-											{/if}
-											{#if u.role === 'admin'}
-												<Button variant="ghost" onclick={() => setRole(u, 'user')}>Cabut Admin</Button>
-											{:else}
-												<Button variant="ghost" onclick={() => setRole(u, 'admin')}>Jadikan Admin</Button>
-											{/if}
-											<Button variant="secondary" onclick={() => openAccountEdit(u)}>Edit</Button>
-											<Button variant="danger" disabled={acting} onclick={() => (deleteTarget = u)}>Hapus</Button>
+											<ActionMenu items={userActions(u)} />
 										{/if}
 									</div>
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Tidak ada pengguna.</td></tr>
+							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noUsers')}</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -502,17 +533,17 @@
 	{:else if activeTab === 'categories'}
 		<Card>
 			<div class="mb-4 flex justify-end">
-				<Button onclick={openCategoryAdd}>+ Tambah Kategori</Button>
+				<IconButton size="md" variant="primary" icon="plus" label={i18n.t('admin.addCategory')} onclick={openCategoryAdd} />
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
 						<tr>
-							<th class="px-2 py-2">Nama</th>
-							<th class="px-2 py-2">Tipe</th>
-							<th class="px-2 py-2">Pemilik</th>
-							<th class="px-2 py-2">Dipakai</th>
-							<th class="px-2 py-2 text-right">Aksi</th>
+							<th class="px-2 py-2">{i18n.t('admin.thName')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thType')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thOwner')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thUsed')}</th>
+							<th class="px-2 py-2 text-right">{i18n.t('common.actions')}</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -523,22 +554,30 @@
 									<span class="h-3 w-3 shrink-0 rounded-full" style="background: {c.color ?? '#94a3b8'}"></span>
 									<span class="font-medium text-slate-900 dark:text-white {isSystem ? '' : 'pl-4'}">{c.name}</span>
 								</td>
-								<td class="px-2 py-3 text-xs text-slate-600 dark:text-slate-300">{c.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}</td>
-								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{isSystem ? 'Sistem (seditable)' : 'Pengguna (read-only)'}</td>
+								<td class="px-2 py-3 text-xs text-slate-600 dark:text-slate-300">
+									{c.type === 'INCOME' ? i18n.t('type.income') : i18n.t('type.expense')}
+								</td>
 								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
-									{c.transactionCount} transaksi · {c.childCount} sub-kategori
+									{isSystem ? i18n.t('admin.systemOwner') : i18n.t('admin.userOwner')}
+								</td>
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
+									{i18n.t('admin.categoryStats', { t: c.transactionCount, c: c.childCount })}
 								</td>
 								<td class="px-2 py-3">
-									<div class="flex flex-wrap justify-end gap-1">
+									<div class="flex justify-end">
 										{#if isSystem}
-											<Button variant="secondary" onclick={() => openCategoryEdit(c)}>Edit</Button>
-											<Button
-												variant="danger"
-												disabled={acting || c.transactionCount > 0 || c.childCount > 0}
-												onclick={() => deleteCategory(c)}
-											>
-												Hapus
-											</Button>
+											<ActionMenu
+												items={[
+													{ icon: 'edit', label: i18n.t('common.edit'), onclick: () => openCategoryEdit(c) },
+													{
+														icon: 'trash',
+														label: i18n.t('common.delete'),
+														danger: true,
+														disabled: acting || c.transactionCount > 0 || c.childCount > 0,
+														onclick: () => requestDeleteCategory(c)
+													}
+												]}
+											/>
 										{:else}
 											<span class="px-2 text-xs text-slate-400 dark:text-metadark">—</span>
 										{/if}
@@ -546,7 +585,7 @@
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Belum ada kategori.</td></tr>
+							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noCategories')}</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -555,17 +594,17 @@
 	{:else if activeTab === 'walletTypes'}
 		<Card>
 			<div class="mb-4 flex justify-end">
-				<Button onclick={openWalletAdd}>+ Tambah Tipe Dompet</Button>
+				<IconButton size="md" variant="primary" icon="plus" label={i18n.t('admin.addWalletType')} onclick={openWalletAdd} />
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
 						<tr>
-							<th class="px-2 py-2">Kode</th>
-							<th class="px-2 py-2">Label</th>
-							<th class="px-2 py-2">Status</th>
-							<th class="px-2 py-2">Dipakai</th>
-							<th class="px-2 py-2 text-right">Aksi</th>
+							<th class="px-2 py-2">{i18n.t('admin.thCode')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thLabel')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thStatus')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thUsed')}</th>
+							<th class="px-2 py-2 text-right">{i18n.t('common.actions')}</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -575,24 +614,36 @@
 								<td class="px-2 py-3 font-medium text-slate-900 dark:text-white">{w.label}</td>
 								<td class="px-2 py-3">
 									<span class="rounded-full px-2 py-0.5 text-xs font-semibold {w.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600 dark:text-slate-300'}">
-										{w.isActive ? 'Aktif' : 'Nonaktif'}
+										{w.isActive ? i18n.t('status.active') : i18n.t('status.inactive')}
 									</span>
 								</td>
-								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.walletCount} dompet</td>
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
+									{i18n.t('admin.walletCount', { w: w.walletCount })}
+								</td>
 								<td class="px-2 py-3">
-									<div class="flex flex-wrap justify-end gap-1">
-										<Button variant="secondary" onclick={() => openWalletEdit(w)}>Edit</Button>
-										<Button variant="ghost" onclick={() => toggleWalletActive(w)}>
-											{w.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-										</Button>
-										<Button variant="danger" disabled={acting || w.walletCount > 0} onclick={() => deleteWalletType(w)}>
-											Hapus
-										</Button>
+									<div class="flex justify-end">
+										<ActionMenu
+											items={[
+												{ icon: 'edit', label: i18n.t('common.edit'), onclick: () => openWalletEdit(w) },
+												{
+													icon: w.isActive ? 'x' : 'check',
+													label: w.isActive ? i18n.t('admin.deactivate') : i18n.t('admin.activate'),
+													onclick: () => toggleWalletActive(w)
+												},
+												{
+													icon: 'trash',
+													label: i18n.t('common.delete'),
+													danger: true,
+													disabled: acting || w.walletCount > 0,
+													onclick: () => requestDeleteWalletType(w)
+												}
+											]}
+										/>
 									</div>
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Belum ada tipe dompet.</td></tr>
+							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noWalletTypes')}</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -601,18 +652,18 @@
 	{:else}
 		<Card>
 			<div class="mb-4 flex justify-end">
-				<Button onclick={openDompetAdd}>+ Tambah Dompet</Button>
+				<IconButton size="md" variant="primary" icon="plus" label={i18n.t('admin.addWallet')} onclick={openDompetAdd} />
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
 						<tr>
-							<th class="px-2 py-2">Dompet</th>
-							<th class="px-2 py-2">Pemilik</th>
-							<th class="px-2 py-2">Tipe</th>
-							<th class="px-2 py-2">Saldo</th>
-							<th class="px-2 py-2">Dipakai</th>
-							<th class="px-2 py-2 text-right">Aksi</th>
+							<th class="px-2 py-2">{i18n.t('admin.thWallet')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thOwner')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thType')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thBalance')}</th>
+							<th class="px-2 py-2">{i18n.t('admin.thUsed')}</th>
+							<th class="px-2 py-2 text-right">{i18n.t('common.actions')}</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -629,20 +680,32 @@
 								<td class="px-2 py-3 text-xs text-slate-600 dark:text-slate-300">{w.typeLabel ?? w.type}</td>
 								<td class="px-2 py-3">
 									<p class="font-medium text-slate-900 dark:text-white">{formatCurrency(w.currentBalance, w.currency)}</p>
-									<p class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.isIncludedInTotal ? 'Dihitung di total' : 'Tidak dihitung'}</p>
+									<p class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
+										{w.isIncludedInTotal ? i18n.t('admin.inTotal') : i18n.t('admin.notInTotal')}
+									</p>
 								</td>
-								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.transactionCount} transaksi</td>
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
+									{i18n.t('admin.txCount', { t: w.transactionCount })}
+								</td>
 								<td class="px-2 py-3">
-									<div class="flex flex-wrap justify-end gap-1">
-										<Button variant="secondary" onclick={() => openDompetEdit(w)}>Edit</Button>
-										<Button variant="danger" disabled={acting || w.transactionCount > 0} onclick={() => deleteAdminWallet(w)}>
-											Hapus
-										</Button>
+									<div class="flex justify-end">
+										<ActionMenu
+											items={[
+												{ icon: 'edit', label: i18n.t('common.edit'), onclick: () => openDompetEdit(w) },
+												{
+													icon: 'trash',
+													label: i18n.t('common.delete'),
+													danger: true,
+													disabled: acting || w.transactionCount > 0,
+													onclick: () => requestDeleteAdminWallet(w)
+												}
+											]}
+										/>
 									</div>
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan="6" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Belum ada dompet.</td></tr>
+							<tr><td colspan="6" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.noWallets')}</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -653,7 +716,7 @@
 
 <!-- Modal blokir akun -->
 {#if blockTarget}
-	<Modal title="Blokir akun {blockTarget.name}" onclose={() => (blockTarget = null)}>
+	<Modal title={i18n.t('admin.blockTitle', { name: blockTarget.name })} onclose={() => (blockTarget = null)}>
 		<form
 			class="space-y-4"
 			onsubmit={(e) => {
@@ -662,18 +725,18 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Alasan pemblokiran (opsional)</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.blockReason')}</span>
 				<textarea
 					rows="3"
 					bind:value={blockReason}
-					placeholder="Contoh: tindakan mencurigakan"
+					placeholder={i18n.t('admin.blockPlaceholder')}
 					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				></textarea>
 			</label>
-			<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Pengguna yang diblokir tidak bisa login atau memakai API sampai blokir dibuka.</p>
+			<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.blockNote')}</p>
 			<div class="flex justify-end gap-2">
-				<Button variant="ghost" onclick={() => (blockTarget = null)}>Batal</Button>
-				<Button type="submit" variant="danger" loading={acting}>Blokir</Button>
+				<Button variant="ghost" onclick={() => (blockTarget = null)}>{i18n.t('common.cancel')}</Button>
+				<Button type="submit" variant="danger" loading={acting}>{i18n.t('admin.block')}</Button>
 			</div>
 		</form>
 	</Modal>
@@ -681,7 +744,7 @@
 
 <!-- Modal ganti password -->
 {#if passwordTarget}
-	<Modal title="Ganti password akun {passwordTarget.name}" onclose={() => (passwordTarget = null)}>
+	<Modal title={i18n.t('admin.passwordTitle', { name: passwordTarget.name })} onclose={() => (passwordTarget = null)}>
 		<form
 			class="space-y-4"
 			onsubmit={(e) => {
@@ -690,7 +753,7 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Password baru</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.newPassword')}</span>
 				<div class="relative">
 					<input
 						type={showPassword ? 'text' : 'password'}
@@ -698,24 +761,28 @@
 						required
 						minlength="8"
 						autocomplete="new-password"
-						placeholder="Min. 8 karakter, huruf + angka"
+						placeholder={i18n.t('admin.pwPlaceholderNew')}
 						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 pr-16 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 					/>
 					<button
 						type="button"
-						class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+						aria-label={showPassword ? i18n.t('admin.pwHide') : i18n.t('admin.pwShow')}
+						title={showPassword ? i18n.t('admin.pwHide') : i18n.t('admin.pwShow')}
+						class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded px-2 py-1 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600"
 						onclick={() => (showPassword = !showPassword)}
 					>
-						{showPassword ? 'Sembunyi' : 'Lihat'}
+						{#if showPassword}
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+						{:else}
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm5.542 0C19.268 7.943 15.478 5 11 5 6.523 5 2.732 7.943 1.458 12c1.274 4.057 5.065 7 9.542 7 4.477 0 8.27-2.943 9.542-7z" /></svg>
+						{/if}
 					</button>
 				</div>
 			</label>
-			<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">
-				Password baru segera aktif tanpa perlu password lama. Sampaikan password ini kepada pengguna lewat jalur aman.
-			</p>
+			<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.pwNoteNew')}</p>
 			<div class="flex justify-end gap-2">
-				<Button variant="ghost" onclick={() => (passwordTarget = null)}>Batal</Button>
-				<Button type="submit" loading={acting}>Simpan Password</Button>
+				<Button variant="ghost" onclick={() => (passwordTarget = null)}>{i18n.t('common.cancel')}</Button>
+				<Button type="submit" loading={acting}>{i18n.t('admin.savePw')}</Button>
 			</div>
 		</form>
 	</Modal>
@@ -723,7 +790,7 @@
 
 <!-- Modal kategori -->
 {#if categoryModalMode}
-	<Modal title={categoryModalMode === 'add' ? 'Tambah Kategori Sistem' : 'Edit Kategori Sistem'} onclose={() => (categoryModalMode = null)}>
+	<Modal title={categoryModalMode === 'add' ? i18n.t('admin.addCategoryTitle') : i18n.t('admin.editCategoryTitle')} onclose={() => (categoryModalMode = null)}>
 		<form
 			class="space-y-4"
 			onsubmit={(e) => {
@@ -732,7 +799,7 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.categoryName')}</span>
 				<input
 					type="text"
 					required
@@ -745,22 +812,22 @@
 			{#if categoryModalMode === 'add'}
 				<div class="grid grid-cols-2 gap-3">
 					<label class="block">
-						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Tipe</span>
+						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.categoryType')}</span>
 						<select
 							bind:value={categoryForm.type}
 							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 						>
-							<option value="EXPENSE">Pengeluaran</option>
-							<option value="INCOME">Pemasukan</option>
+							<option value="EXPENSE">{i18n.t('type.expense')}</option>
+							<option value="INCOME">{i18n.t('type.income')}</option>
 						</select>
 					</label>
 					<label class="block">
-						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Kategori induk</span>
+						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.parentCategory')}</span>
 						<select
 							bind:value={categoryForm.parentId}
 							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 						>
-							<option value="">— Tidak ada —</option>
+							<option value="">{i18n.t('admin.noParent')}</option>
 							{#each systemCategories.filter((p) => !p.parentId && p.type === categoryForm.type) as p (p.id)}
 								<option value={p.id}>{p.name}</option>
 							{/each}
@@ -769,12 +836,12 @@
 				</div>
 			{/if}
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Warna</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.color')}</span>
 				<input type="color" bind:value={categoryForm.color} class="h-10 w-20 cursor-pointer rounded border border-slate-300 dark:border-slate-600" />
 			</label>
 			<div class="flex justify-end gap-2">
-				<Button variant="ghost" onclick={() => (categoryModalMode = null)}>Batal</Button>
-				<Button type="submit" loading={acting}>Simpan</Button>
+				<Button variant="ghost" onclick={() => (categoryModalMode = null)}>{i18n.t('common.cancel')}</Button>
+				<Button type="submit" loading={acting}>{i18n.t('common.save')}</Button>
 			</div>
 		</form>
 	</Modal>
@@ -782,7 +849,7 @@
 
 <!-- Modal tipe dompet -->
 {#if walletModalMode}
-	<Modal title={walletModalMode === 'add' ? 'Tambah Tipe Dompet' : 'Edit Tipe Dompet'} onclose={() => (walletModalMode = null)}>
+	<Modal title={walletModalMode === 'add' ? i18n.t('admin.addWalletTypeTitle') : i18n.t('admin.editWalletTypeTitle')} onclose={() => (walletModalMode = null)}>
 		<form
 			class="space-y-4"
 			onsubmit={(e) => {
@@ -791,7 +858,9 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Kode {walletModalMode === 'add' ? '(mis. INVESTASI)' : ''}</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+					{i18n.t('admin.walletCode')} {walletModalMode === 'add' ? i18n.t('admin.addWalletCodeHint') : ''}
+				</span>
 				<input
 					type="text"
 					required
@@ -801,7 +870,7 @@
 				/>
 			</label>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Label tampilan</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.walletTypeLabel')}</span>
 				<input
 					type="text"
 					required
@@ -812,8 +881,8 @@
 				/>
 			</label>
 			<div class="flex justify-end gap-2">
-				<Button variant="ghost" onclick={() => (walletModalMode = null)}>Batal</Button>
-				<Button type="submit" loading={acting}>Simpan</Button>
+				<Button variant="ghost" onclick={() => (walletModalMode = null)}>{i18n.t('common.cancel')}</Button>
+				<Button type="submit" loading={acting}>{i18n.t('common.save')}</Button>
 			</div>
 		</form>
 	</Modal>
@@ -821,7 +890,7 @@
 
 <!-- Modal dompet -->
 {#if dompetModalMode}
-	<Modal title={dompetModalMode === 'add' ? 'Tambah Dompet' : 'Edit Dompet'} onclose={() => (dompetModalMode = null)}>
+	<Modal title={dompetModalMode === 'add' ? i18n.t('admin.addWalletTitle') : i18n.t('admin.editWalletTitle')} onclose={() => (dompetModalMode = null)}>
 		<form
 			class="space-y-4"
 			onsubmit={(e) => {
@@ -831,13 +900,13 @@
 		>
 			{#if dompetModalMode === 'add'}
 				<label class="block">
-					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Pemilik</span>
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.thOwner')}</span>
 					<select
 						bind:value={dompetForm.userId}
 						required
 						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 					>
-						<option value="" disabled>— Pilih pengguna —</option>
+						<option value="" disabled>{i18n.t('admin.selectOwner')}</option>
 						{#each users as u (u.id)}
 							<option value={u.id}>{u.name} ({u.email})</option>
 						{/each}
@@ -845,11 +914,11 @@
 				</label>
 			{:else}
 				<p class="rounded-lg bg-slate-50 dark:bg-boxdark-2 px-3 py-2 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
-					Pemilik dompet tidak dapat diubah; saldo ikut ke kelola lewat transaksi agar selalu konsisten dengan riwayat.
+					{i18n.t('admin.ownerLockedNote')}
 				</p>
 			{/if}
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama dompet</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.walletName')}</span>
 				<input
 					type="text"
 					required
@@ -861,20 +930,20 @@
 			</label>
 			<div class="grid grid-cols-2 gap-3">
 				<label class="block">
-					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Tipe dompet</span>
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.walletType')}</span>
 					<select
 						bind:value={dompetForm.type}
 						required
 						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 					>
-						<option value="" disabled>— Pilih tipe —</option>
+						<option value="" disabled>{i18n.t('admin.selectType')}</option>
 						{#each walletTypes.filter((t) => t.isActive) as t (t.code)}
 							<option value={t.code}>{t.label}</option>
 						{/each}
 					</select>
 				</label>
 				<label class="block">
-					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Mata uang</span>
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.currency')}</span>
 					<input
 						type="text"
 						required
@@ -887,7 +956,7 @@
 			</div>
 			{#if dompetModalMode === 'add'}
 				<label class="block">
-					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Saldo awal</span>
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.initialBalance')}</span>
 					<input
 						type="number"
 						step="0.01"
@@ -899,11 +968,11 @@
 			{/if}
 			<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
 				<input type="checkbox" bind:checked={dompetForm.isIncludedInTotal} class="h-4 w-4 cursor-pointer rounded border-slate-300 dark:border-slate-600" />
-				Ikut dihitung dalam total saldo dashboard
+				{i18n.t('admin.includeTotal')}
 			</label>
 			<div class="flex justify-end gap-2">
-				<Button variant="ghost" onclick={() => (dompetModalMode = null)}>Batal</Button>
-				<Button type="submit" loading={acting}>Simpan</Button>
+				<Button variant="ghost" onclick={() => (dompetModalMode = null)}>{i18n.t('common.cancel')}</Button>
+				<Button type="submit" loading={acting}>{i18n.t('common.save')}</Button>
 			</div>
 		</form>
 	</Modal>
@@ -911,7 +980,7 @@
 
 <!-- Modal tambah/edit akun -->
 {#if accountModalMode}
-	<Modal title={accountModalMode === 'add' ? 'Tambah Akun' : 'Edit Akun'} onclose={() => (accountModalMode = null)}>
+	<Modal title={accountModalMode === 'add' ? i18n.t('admin.addAccountTitle') : i18n.t('admin.editAccountTitle')} onclose={() => (accountModalMode = null)}>
 		<form
 			class="space-y-4"
 			onsubmit={(e) => {
@@ -920,7 +989,7 @@
 			}}
 		>
 			<label class="block">
-				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama</span>
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.accountName')}</span>
 				<input
 					type="text"
 					required
@@ -948,47 +1017,80 @@
 							required
 							minlength="8"
 							autocomplete="new-password"
-							placeholder="Min. 8, huruf + angka"
+							placeholder={i18n.t('admin.pwPlaceholderNew')}
 							bind:value={accountForm.password}
 							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 						/>
 					</label>
 					<label class="block">
-						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Role</span>
+						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">{i18n.t('admin.thRole')}</span>
 						<select
 							bind:value={accountForm.role}
 							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 						>
-							<option value="user">User</option>
-							<option value="admin">Admin</option>
+							<option value="user">{i18n.t('admin.roleUser')}</option>
+							<option value="admin">{i18n.t('admin.roleAdmin')}</option>
 						</select>
 					</label>
 				</div>
 			{/if}
 			{#if accountModalMode === 'add'}
-				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Akun baru otomatis mendapat dompet awal "Dompet Utama" (tipe Bank).</p>
+				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.addWalletPwNote')}</p>
 			{:else}
-				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Password dikelola lewat tombol "Ganti Password" pada tabel.</p>
+				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('admin.editAccountNote')}</p>
 			{/if}
 			<div class="flex justify-end gap-2">
-				<Button variant="ghost" onclick={() => (accountModalMode = null)}>Batal</Button>
-				<Button type="submit" loading={acting}>Simpan</Button>
+				<Button variant="ghost" onclick={() => (accountModalMode = null)}>{i18n.t('common.cancel')}</Button>
+				<Button type="submit" loading={acting}>{i18n.t('common.save')}</Button>
 			</div>
 		</form>
 	</Modal>
 {/if}
 
-<!-- Modal konfirmasi hapus akun -->
-{#if deleteTarget}
-	<Modal title="Hapus Akun {deleteTarget.name}" onclose={() => (deleteTarget = null)}>
-		<p class="text-sm text-slate-600 dark:text-slate-300">
-			Apakah Anda yakin akan menghapus akun
-			<strong class="font-semibold text-slate-900 dark:text-white">{deleteTarget.name} ({deleteTarget.email})</strong>?
-		</p>
-		<p class="mt-1 text-xs text-red-500">Seluruh data akun (transaksi, dompet, budget) akan ikut terhapus dan tidak dapat dibatalkan.</p>
-		<div class="mt-4 flex justify-end gap-2">
-			<Button variant="ghost" onclick={() => (deleteTarget = null)}>Batal</Button>
-			<Button variant="danger" loading={deletingUser} onclick={() => confirmDeleteUser()}>Hapus</Button>
-		</div>
-	</Modal>
-{/if}
+<!-- Konfirmasi hapus akun — WAJIB dikonfirmasi sebelum menghapus. -->
+<ConfirmModal
+	open={deleteTarget !== null}
+	title={i18n.t('confirm.title.deleteAccount', { name: deleteTarget?.name ?? '' })}
+	message={i18n.t('confirm.deleteAccount', { name: deleteTarget?.name ?? '', email: deleteTarget?.email ?? '' })}
+	warning={i18n.t('confirm.deleteAccountWarn')}
+	confirmLabel={i18n.t('common.delete')}
+	confirmLoading={deletingUser}
+	onconfirm={() => confirmDeleteUser()}
+	oncancel={() => (deleteTarget = null)}
+/>
+
+<!-- Konfirmasi hapus kategori -->
+<ConfirmModal
+	open={categoryDeleteTarget !== null}
+	title={i18n.t('confirm.title.deleteCategory')}
+	message={i18n.t('confirm.deleteCategory', { name: categoryDeleteTarget?.name ?? '' })}
+	warning={i18n.t('confirm.deleteCategoryWarn')}
+	confirmLabel={i18n.t('common.delete')}
+	confirmLoading={acting}
+	onconfirm={() => confirmDeleteCategory()}
+	oncancel={() => (categoryDeleteTarget = null)}
+/>
+
+<!-- Konfirmasi hapus tipe dompet -->
+<ConfirmModal
+	open={walletTypeDeleteTarget !== null}
+	title={i18n.t('confirm.title.deleteWalletType')}
+	message={i18n.t('confirm.deleteWalletType', { name: walletTypeDeleteTarget?.label ?? '' })}
+	warning={i18n.t('confirm.deleteWalletTypeWarn')}
+	confirmLabel={i18n.t('common.delete')}
+	confirmLoading={acting}
+	onconfirm={() => confirmDeleteWalletType()}
+	oncancel={() => (walletTypeDeleteTarget = null)}
+/>
+
+<!-- Konfirmasi hapus dompet -->
+<ConfirmModal
+	open={dompetDeleteTarget !== null}
+	title={i18n.t('confirm.title.deleteWallet')}
+	message={i18n.t('confirm.deleteWallet', { name: dompetDeleteTarget?.name ?? '' })}
+	warning={i18n.t('confirm.deleteWalletWarn')}
+	confirmLabel={i18n.t('common.delete')}
+	confirmLoading={acting}
+	onconfirm={() => confirmDeleteAdminWallet()}
+	oncancel={() => (dompetDeleteTarget = null)}
+/>
