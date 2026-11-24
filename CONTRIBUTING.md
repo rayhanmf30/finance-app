@@ -84,3 +84,14 @@ Format baku saat membuat halaman baru di `src/routes/` — mengikuti pola halama
 5. **Pesan** — notice hijau `bg-emerald-50 ... text-emerald-700`, error merah `bg-red-50 ... text-red-700`, placeholder loading skeleton `animate-pulse`.
 6. **Tema gelap wajib** — setiap kelas warna terang wajib punya pasangan `dark:` (`text-slate-700 dark:text-slate-200`, `bg-slate-100 dark:bg-boxdark-2`, dll.).
 7. **Data & state** — halaman memanggil service; komponen `features/*/components/` murni props/callback (Svelte 5 runes, tanpa `createEventDispatcher`).
+
+## Standar Interaksi (UI)
+
+Aturan baku untuk perilaku umum di semua halaman:
+
+1. **Pencarian via tombol Cari** — filter pencarian **hanya diterapkan setelah tombol "Cari" ditekan** (input di dalam `<form onsubmit>`), bukan live saat mengetik. Contoh: halaman Transaksi dan tab Akun di Panel Admin.
+2. **Tabel tetap tampil saat memuat** — jangan sembunyikan tabel saat loading/mencari. `<thead>` **selalu dirender**; hanya isi `<tbody>` yang berganti menjadi baris skeleton `animate-pulse`, lalu daftar hasil (atau pesan "Tidak ada data.") setelah selesai. Contoh: `TransactionList.svelte`.
+3. **Loading pada tombol proses** — semua tombol yang memicu proses (simpan transaksi, simpan budget, cari, blokir, ganti password, tambah/edit/hapus akun, dll.) menggunakan prop `loading` pada `Button.svelte`: tampil spinner, tombol `disabled`, dan proteksi re-entrancy pada handler (`if (saving) return;`).
+4. **Input tidak dikosongkan sebelum sukses** — form dibersihkan (atau ditutup modalnya) **hanya setelah proses berhasil**; bila gagal, isian tetap utuh agar user bisa memperbaiki tanpa mengetik ulang.
+5. **Konfirmasi aksi destruktif** — penghapusan (transaksi, akun, kategori, tipe dompet, dompet) selalu lewat modal konfirmasi yang menyebut objeknya secara spesifik, mis. transaksi: "Apakah Anda yakin akan menghapus transaksi ini "<catatan>" (<nominal>)?", dengan tombol aksi memakai `variant="danger"` + `loading`.
+6. **Detail dengan data tambahan** — data sekunder (mis. rincian barang transaksi) dimuat saat modal dibuka (`GET /api/transactions/[id]`) dan ditampilkan dengan indikator "Memuat …"; modal tidak menunggu data tersebut untuk dibuka.
