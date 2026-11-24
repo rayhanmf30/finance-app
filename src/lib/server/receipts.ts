@@ -42,6 +42,25 @@ interface GroqVisionResponse {
 	choices?: { message?: { content?: string } }[];
 }
 
+/**
+ * Parsing balasan AI yang toleran:
+ * - buang pembungkus ```json ...``` dan teks reasoning (smua blok <think>);
+ * - bila masih gagal, ambil objek { ... } paling luar dengan penyeimbangan kurung.
+ */
+function parseAiJson(content: string): Record<string, unknown> {
+	let text = content.trim();
+	text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+	text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+	try {
+		return JSON.parse(text) as Record<string, unknown>;
+	} catch {
+		const start = text.indexOf('{');
+		const end = text.lastIndexOf('}');
+		if (start === -1 || end <= start) throw new Error('no JSON object');
+		return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+	}
+}
+
 /** Fallback mock bila GROQ_API_KEY belum diset (dev/demo). */
 function mockExtraction(suggestedCategoryId: string | null): ReceiptExtraction {
 	return {
@@ -62,7 +81,9 @@ function mockExtraction(suggestedCategoryId: string | null): ReceiptExtraction {
 async function extractWithGroq(imageDataUrl: string): Promise<Omit<ReceiptExtraction, 'suggestedCategoryId'>> {
 	const apiKey = GROQ_API_KEY;
 	if (!apiKey) {
-		throw new Error('GROQ_API_KEY belum diset.');
+		const err = new Error('GROQ_API_KEY belum diset.');
+		(err as { code?: string }).code = 'E_GROQ_NOT_SET';
+		throw err;
 	}
 
 	const send = async (model: string) =>
@@ -113,9 +134,11 @@ async function extractWithGroq(imageDataUrl: string): Promise<Omit<ReceiptExtrac
 	const content = payload.choices?.[0]?.message?.content ?? '';
 	let parsed: Record<string, unknown>;
 	try {
-		parsed = JSON.parse(content);
+		parsed = parseAiJson(content);
 	} catch {
-		throw new Error('Balasan AI bukan JSON yang valid.');
+		const err = new Error('Balasan AI bukan JSON yang valid.');
+		(err as { code?: string }).code = 'E_AI_BAD_JSON';
+		throw err;
 	}
 
 	const num = (v: unknown): number => {
@@ -124,8 +147,8 @@ async function extractWithGroq(imageDataUrl: string): Promise<Omit<ReceiptExtrac
 	};
 	const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
 
-	return {
-		merchantName: typeof parsed.merchantName === 'string' && parsed.merchantName.trim() ? parsed.merchantName.trim() : 'Tanpa merchant',
+	const extraction: Omit<ReceiptExtraction, 'suggestedCategoryId'> = {
+		merchantName: typeof parsed.merchantName === 'string' && parsed.merchantName.trim() ? parsed.merchantName.trim() : '',
 		transactionDate: typeof parsed.transactionDate === 'string' && !Number.isNaN(Date.parse(parsed.transactionDate))
 			? new Date(parsed.transactionDate).toISOString()
 			: new Date().toISOString(),
@@ -147,6 +170,21 @@ async function extractWithGroq(imageDataUrl: string): Promise<Omit<ReceiptExtrac
 		discount: num(parsed.discount),
 		total: num(parsed.total)
 	};
+
+	// Struk tidak terbaca: tidak ada item dan tidak ada total — jangan balas kosong,
+	// minta pengguna coba foto lain (ini penyebab "review" yang tidak muncul apa pun).
+	if (
+		extraction.items.length === 0 &&
+		extraction.total <= 0 &&
+		!extraction.merchantName
+	) {
+		const err = new Error('Struk tidak terbaca. Coba foto yang lebih jelas/datar.');
+		(err as { code?: string }).code = 'E_RECEIPT_UNREADABLE';
+		throw err;
+	}
+	if (!extraction.merchantName) extraction.merchantName = 'Tanpa merchant';
+
+	return extraction;
 }
 
 /**

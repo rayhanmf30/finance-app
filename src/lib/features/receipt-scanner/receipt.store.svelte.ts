@@ -1,5 +1,6 @@
 import { transactionService } from '#lib/features/transactions/services/transaction.service';
 import type { ReceiptExtraction, TransactionInput } from '#lib/shared/models/domain';
+import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 import { receiptParserService } from './services/receipt-parser.service';
 
 export type ReceiptStatus = 'idle' | 'uploading' | 'reviewing' | 'saving' | 'saved';
@@ -22,8 +23,8 @@ class ReceiptStore {
 		} catch (err) {
 			const detail = err instanceof Error ? err.message : '';
 			this.error = detail
-				? `Gagal mengekstrak resi — ${detail}. Periksa gambar atau konfigurasi GROQ_API_KEY, lalu coba lagi.`
-				: 'Gagal mengekstrak resi. Coba gambar lain.';
+				? i18n.t('scan.failedExtract', { detail })
+				: i18n.t('scan.failedExtractPlain');
 			this.status = 'idle';
 		}
 	}
@@ -34,9 +35,12 @@ class ReceiptStore {
 		try {
 			await transactionService.create({ ...input, type: 'EXPENSE' });
 			this.status = 'saved';
+			this.error = null;
 		} catch (err) {
 			const detail = err instanceof Error ? err.message : '';
-			this.error = detail ? `Gagal menyimpan transaksi — ${detail}` : 'Gagal menyimpan transaksi.';
+			this.error = detail
+				? i18n.t('scan.failedSave', { detail })
+				: i18n.t('scan.failedSavePlain');
 			this.status = 'reviewing';
 		}
 	}
