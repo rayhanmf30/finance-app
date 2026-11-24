@@ -8,7 +8,8 @@
 	 * Aksi baris tabel. Aturan baku (lihat CONTRIBUTING.md):
 	 * - tombol aksi tabel selalu ikon (dengan aria-label);
 	 * - bila jumlah aksi terlihat > 3, dirender sebagai menu titik tiga (),
-	 *   dan seluruh aksi muncul di dropdown di bawahnya saat ikon diklik.
+	 *   dan seluruh aksi muncul di dropdown yang terbuka KE ATAS saat ikon diklik,
+	 *   agar tidak terpotong tepi bawah tabel.
 	 */
 	export interface MenuItem {
 		icon: IconName;
@@ -48,7 +49,7 @@
 		<IconButton icon="dots" label={i18n.t('common.actions')} variant="default" onclick={() => (open = !open)} />
 		{#if open}
 			<div
-				class="absolute top-full z-10 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700/60 dark:bg-boxdark-2"
+				class="absolute bottom-full z-10 mb-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700/60 dark:bg-boxdark-2"
 				role="menu"
 			>
 				{#each visible as item (item.label)}
