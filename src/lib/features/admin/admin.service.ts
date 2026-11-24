@@ -1,5 +1,5 @@
 import { httpClient } from '#lib/core/api/http-client';
-import type { AdminCategory, AdminUser, WalletTypeInfo } from '#lib/shared/models/domain';
+import type { AdminCategory, AdminUser, AdminWallet, WalletTypeInfo } from '#lib/shared/models/domain';
 
 export interface BlockInput {
 	isBlocked: boolean;
@@ -57,5 +57,28 @@ export const adminService = {
 	},
 	async deleteWalletType(code: string): Promise<void> {
 		await httpClient.delete(`/api/admin/wallet-types/${encodeURIComponent(code)}`);
+	},
+
+	// ---- Wallets (dompet milik pengguna) ----
+	async listWallets(): Promise<AdminWallet[]> {
+		return httpClient.get<AdminWallet[]>('/api/admin/wallets');
+	},
+	async createWallet(body: {
+		userId: string;
+		name: string;
+		type: string;
+		currency?: string;
+		initialBalance?: number;
+	}): Promise<{ id: string }> {
+		return httpClient.post<{ id: string }>('/api/admin/wallets', body);
+	},
+	async updateWallet(
+		id: string,
+		body: { name?: string; type?: string; currency?: string; isIncludedInTotal?: boolean }
+	): Promise<void> {
+		await httpClient.patch(`/api/admin/wallets/${id}`, body);
+	},
+	async deleteWallet(id: string): Promise<void> {
+		await httpClient.delete(`/api/admin/wallets/${id}`);
 	}
 };

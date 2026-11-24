@@ -1,20 +1,28 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { authService } from '#lib/core/auth/auth.service.svelte';
 	import { adminService } from '#lib/features/admin/admin.service';
 	import { Button, Card, Modal } from '#lib/shared/components';
-	import type { AdminCategory, AdminUser, WalletTypeInfo } from '#lib/shared/models/domain';
+	import { formatCurrency } from '#lib/shared/pipes/currency';
+	import type { AdminCategory, AdminUser, AdminWallet, WalletTypeInfo } from '#lib/shared/models/domain';
 
-	type Tab = 'users' | 'categories' | 'walletTypes';
+	type Tab = 'users' | 'categories' | 'walletTypes' | 'wallets';
 
 	const tabs: { id: Tab; label: string }[] = [
 		{ id: 'users', label: 'Akun' },
 		{ id: 'categories', label: 'Kategori' },
-		{ id: 'walletTypes', label: 'Tipe Dompet' }
+		{ id: 'walletTypes', label: 'Tipe Dompet' },
+		{ id: 'wallets', label: 'Dompet' }
 	];
 
-	let activeTab = $state<Tab>('users');
+	const VALID_TABS: Tab[] = ['users', 'categories', 'walletTypes', 'wallets'];
+
+	const activeTab = $derived<Tab>(
+		(VALID_TABS as string[]).includes(page.url.searchParams.get('tab') ?? '') && VALID_TABS.includes(page.url.searchParams.get('tab') as Tab)
+			? (page.url.searchParams.get('tab') as Tab)
+			: 'users'
+	);
 	let loading = $state(true);
 	let acting = $state(false);
 	let error = $state('');
@@ -41,6 +49,19 @@
 	let walletModalMode = $state<'add' | 'edit' | null>(null);
 	let walletForm = $state<{ code: string; label: string }>({ code: '', label: '' });
 
+	// ---- Dompet (tabel wallets) ----
+	let adminWallets = $state<AdminWallet[]>([]);
+	let dompetModalMode = $state<'add' | 'edit' | null>(null);
+	let dompetForm = $state<{
+		id: string;
+		userId: string;
+		name: string;
+		type: string;
+		currency: string;
+		initialBalance: string;
+		isIncludedInTotal: boolean;
+	}>({ id: '', userId: '', name: '', type: '', currency: 'IDR', initialBalance: '0', isIncludedInTotal: true });
+
 	const systemCategories = $derived(categories.filter((c) => c.ownerId === null));
 
 	function flash(message: string) {
@@ -65,11 +86,16 @@
 		walletTypes = await adminService.listWalletTypes();
 	}
 
+	async function loadAdminWallets() {
+		adminWallets = await adminService.listWallets();
+	}
+
 	async function loadTab(tab: Tab) {
 		try {
 			error = '';
 			if (tab === 'users') await loadUsers();
 			else if (tab === 'categories') await loadCategories();
+			else if (tab === 'wallets') await loadAdminWallets();
 			else await loadWalletTypes();
 		} catch (err) {
 			showError(err);
@@ -78,18 +104,15 @@
 		}
 	}
 
-	function switchTab(tab: Tab) {
-		activeTab = tab;
-		loading = true;
-		void loadTab(tab);
-	}
-
-	onMount(() => {
+	// Muat ulang data tiap tab berubah (termasuk saat dibuka dari tree sidebar).
+	$effect(() => {
 		if (!authService.isAdmin) {
 			void goto('/');
 			return;
 		}
-		void loadTab(activeTab);
+		const tab = activeTab;
+		loading = true;
+		void loadTab(tab);
 	});
 
 	async function withAction(fn: () => Promise<void>, successMessage: string) {
@@ -242,31 +265,84 @@
 			await loadWalletTypes();
 		}, `Tipe dompet "${w.label}" berhasil dihapus.`);
 	}
+
+	// ---- Dompet (tabel wallets) actions ----
+	function openDompetAdd() {
+		dompetForm = { id: '', userId: '', name: '', type: '', currency: 'IDR', initialBalance: '0', isIncludedInTotal: true };
+		// Referensi pemilik & tipe dompet dibutuhkan di modal.
+		if (users.length === 0) void loadUsers();
+		if (walletTypes.length === 0) void loadWalletTypes();
+		dompetModalMode = 'add';
+	}
+
+	function openDompetEdit(w: AdminWallet) {
+		dompetForm = {
+			id: w.id,
+			userId: w.ownerId,
+			name: w.name,
+			type: w.type,
+			currency: w.currency,
+			initialBalance: String(w.currentBalance),
+			isIncludedInTotal: w.isIncludedInTotal
+		};
+		if (walletTypes.length === 0) void loadWalletTypes();
+		dompetModalMode = 'edit';
+	}
+
+	function submitDompet() {
+		if (acting) return;
+		const form = { ...dompetForm };
+		const mode = dompetModalMode;
+		const initialBalance = Number(form.initialBalance);
+		if (!Number.isFinite(initialBalance) || initialBalance < 0) {
+			error = 'Saldo awal wajib angka >= 0.';
+			return;
+		}
+		void withAction(async () => {
+			if (mode === 'add') {
+				await adminService.createWallet({
+					userId: form.userId,
+					name: form.name,
+					type: form.type,
+					currency: form.currency,
+					initialBalance
+				});
+			} else {
+				await adminService.updateWallet(form.id, {
+					name: form.name,
+					type: form.type,
+					currency: form.currency,
+					isIncludedInTotal: form.isIncludedInTotal
+				});
+			}
+			dompetModalMode = null;
+			await loadAdminWallets();
+		}, mode === 'add' ? 'Dompet berhasil ditambahkan.' : 'Dompet berhasil diperbarui.');
+	}
+
+	function deleteAdminWallet(w: AdminWallet) {
+		if (acting) return;
+		void withAction(async () => {
+			await adminService.deleteWallet(w.id);
+			await loadAdminWallets();
+		}, `Dompet "${w.name}" berhasil dihapus.`);
+	}
 </script>
 
 <svelte:head><title>Admin — FinanceApp</title></svelte:head>
 
-<div class="mx-auto w-full max-w-5xl p-4 sm:p-6">
-	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">Panel Admin</h1>
-		<div class="flex flex-wrap gap-1 rounded-lg bg-slate-100 dark:bg-boxdark-2 p-1">
-			{#each tabs as tab (tab.id)}
-				<button
-					type="button"
-					class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors {activeTab === tab.id ? 'bg-white dark:bg-boxdark-2 text-indigo-700 shadow' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white dark:hover:text-white'}"
-					onclick={() => switchTab(tab.id)}
-				>
-					{tab.label}
-				</button>
-			{/each}
-		</div>
+<div class="space-y-6">
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+			Panel Admin — {tabs.find((t) => t.id === activeTab)?.label ?? 'Akun'}
+		</h1>
 	</div>
 
 	{#if notice}
-		<div class="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{notice}</div>
+		<div class="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{notice}</div>
 	{/if}
 	{#if error}
-		<div class="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+		<div class="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
 	{/if}
 
 	{#if loading}
@@ -402,7 +478,7 @@
 				</table>
 			</div>
 		</Card>
-	{:else}
+	{:else if activeTab === 'walletTypes'}
 		<Card>
 			<div class="mb-4 flex justify-end">
 				<Button onclick={openWalletAdd}>+ Tambah Tipe Dompet</Button>
@@ -443,6 +519,56 @@
 							</tr>
 						{:else}
 							<tr><td colspan="5" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Belum ada tipe dompet.</td></tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</Card>
+	{:else}
+		<Card>
+			<div class="mb-4 flex justify-end">
+				<Button onclick={openDompetAdd}>+ Tambah Dompet</Button>
+			</div>
+			<div class="overflow-x-auto">
+				<table class="w-full text-left text-sm">
+					<thead class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark uppercase">
+						<tr>
+							<th class="px-2 py-2">Dompet</th>
+							<th class="px-2 py-2">Pemilik</th>
+							<th class="px-2 py-2">Tipe</th>
+							<th class="px-2 py-2">Saldo</th>
+							<th class="px-2 py-2">Dipakai</th>
+							<th class="px-2 py-2 text-right">Aksi</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
+						{#each adminWallets as w (w.id)}
+							<tr>
+								<td class="px-2 py-3">
+									<p class="font-medium text-slate-900 dark:text-white">{w.name}</p>
+									<p class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.currency}</p>
+								</td>
+								<td class="px-2 py-3">
+									<p class="text-slate-700 dark:text-slate-200">{w.ownerName}</p>
+									<p class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.ownerEmail}</p>
+								</td>
+								<td class="px-2 py-3 text-xs text-slate-600 dark:text-slate-300">{w.typeLabel ?? w.type}</td>
+								<td class="px-2 py-3">
+									<p class="font-medium text-slate-900 dark:text-white">{formatCurrency(w.currentBalance, w.currency)}</p>
+									<p class="text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.isIncludedInTotal ? 'Dihitung di total' : 'Tidak dihitung'}</p>
+								</td>
+								<td class="px-2 py-3 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">{w.transactionCount} transaksi</td>
+								<td class="px-2 py-3">
+									<div class="flex flex-wrap justify-end gap-1">
+										<Button variant="secondary" onclick={() => openDompetEdit(w)}>Edit</Button>
+										<Button variant="danger" disabled={acting || w.transactionCount > 0} onclick={() => deleteAdminWallet(w)}>
+											Hapus
+										</Button>
+									</div>
+								</td>
+							</tr>
+						{:else}
+							<tr><td colspan="6" class="px-2 py-6 text-center text-slate-500 dark:text-slate-400 dark:text-metadark">Belum ada dompet.</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -613,6 +739,96 @@
 			</label>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (walletModalMode = null)}>Batal</Button>
+				<Button type="submit" disabled={acting}>Simpan</Button>
+			</div>
+		</form>
+	</Modal>
+{/if}
+
+<!-- Modal dompet -->
+{#if dompetModalMode}
+	<Modal title={dompetModalMode === 'add' ? 'Tambah Dompet' : 'Edit Dompet'} onclose={() => (dompetModalMode = null)}>
+		<form
+			class="space-y-4"
+			onsubmit={(e) => {
+				e.preventDefault();
+				submitDompet();
+			}}
+		>
+			{#if dompetModalMode === 'add'}
+				<label class="block">
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Pemilik</span>
+					<select
+						bind:value={dompetForm.userId}
+						required
+						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					>
+						<option value="" disabled>— Pilih pengguna —</option>
+						{#each users as u (u.id)}
+							<option value={u.id}>{u.name} ({u.email})</option>
+						{/each}
+					</select>
+				</label>
+			{:else}
+				<p class="rounded-lg bg-slate-50 dark:bg-boxdark-2 px-3 py-2 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">
+					Pemilik dompet tidak dapat diubah; saldo ikut ke kelola lewat transaksi agar selalu konsisten dengan riwayat.
+				</p>
+			{/if}
+			<label class="block">
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama dompet</span>
+				<input
+					type="text"
+					required
+					minlength="2"
+					maxlength="100"
+					bind:value={dompetForm.name}
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+				/>
+			</label>
+			<div class="grid grid-cols-2 gap-3">
+				<label class="block">
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Tipe dompet</span>
+					<select
+						bind:value={dompetForm.type}
+						required
+						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					>
+						<option value="" disabled>— Pilih tipe —</option>
+						{#each walletTypes.filter((t) => t.isActive) as t (t.code)}
+							<option value={t.code}>{t.label}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="block">
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Mata uang</span>
+					<input
+						type="text"
+						required
+						minlength="3"
+						maxlength="3"
+						bind:value={dompetForm.currency}
+						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm uppercase focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					/>
+				</label>
+			</div>
+			{#if dompetModalMode === 'add'}
+				<label class="block">
+					<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Saldo awal</span>
+					<input
+						type="number"
+						step="0.01"
+						min="0"
+						bind:value={dompetForm.initialBalance}
+						class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+					/>
+				</label>
+			{/if}
+			<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+				<input type="checkbox" bind:checked={dompetForm.isIncludedInTotal} class="h-4 w-4 cursor-pointer rounded border-slate-300 dark:border-slate-600" />
+				Ikut dihitung dalam total saldo dashboard
+			</label>
+			<div class="flex justify-end gap-2">
+				<Button variant="ghost" onclick={() => (dompetModalMode = null)}>Batal</Button>
 				<Button type="submit" disabled={acting}>Simpan</Button>
 			</div>
 		</form>

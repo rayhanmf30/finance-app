@@ -1,15 +1,20 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Button, Modal } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
 	import { transactionStore } from '#lib/features/transactions/transaction.store.svelte';
 	import { dashboardStore } from '#lib/features/dashboard/dashboard.store.svelte';
 	import { transactionService } from '#lib/features/transactions/services/transaction.service';
-	import type { Category, TransactionInput, Wallet } from '#lib/shared/models/domain';
+	import type { Category, Transaction, TransactionInput, Wallet } from '#lib/shared/models/domain';
 	import TransactionList from '#lib/features/transactions/components/TransactionList.svelte';
 	import TransactionForm from '#lib/features/transactions/components/TransactionForm.svelte';
+	import TransactionDetailModal from '#lib/features/transactions/components/TransactionDetailModal.svelte';
+	import ScanResiModal from '#lib/features/receipt-scanner/ScanResiModal.svelte';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
 
-	let showForm = $state(false);
+	let viewTarget = $state<Transaction | null>(null);
+	let editTarget = $state<Transaction | null>(null);
+	let scanOpen = $state(false);
 	let wallets = $state<Wallet[]>([]);
 	let categories = $state<Category[]>([]);
 	let actionError = $state<string | null>(null);
@@ -28,15 +33,21 @@
 		]);
 	}
 
-	async function handleSubmit(input: TransactionInput) {
+	function openEditFromDetail(t: Transaction) {
+		viewTarget = null;
+		editTarget = t;
+	}
+
+	async function handleUpdate(input: TransactionInput) {
+		if (!editTarget) return;
 		actionError = null;
 		try {
-			await transactionService.create(input);
-			showForm = false;
+			await transactionService.update(editTarget.id, input);
+			editTarget = null;
 			await transactionStore.refresh();
 			dashboardStore.refresh();
 		} catch {
-			actionError = 'Gagal menyimpan transaksi.';
+			actionError = 'Gagal memperbarui transaksi.';
 		}
 	}
 
@@ -56,7 +67,16 @@
 		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
 			Riwayat Transaksi — {formatMonthYear(transactionStore.filter.month)}
 		</h1>
-		<Button variant="primary" onclick={() => (showForm = true)}>+ Tambah Transaksi</Button>
+		<div class="flex flex-wrap gap-2">
+			<Button variant="secondary" onclick={() => (scanOpen = true)}>
+				<svg class="mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" />
+					<circle cx="12" cy="12" r="3.5" />
+				</svg>
+				Scan Resi
+			</Button>
+			<Button variant="primary" onclick={() => goto('/transactions/new')}>+ Tambah Transaksi</Button>
+		</div>
 	</div>
 
 	<div class="flex flex-wrap gap-3">
@@ -90,14 +110,33 @@
 			<TransactionList
 				transactions={transactionStore.transactions}
 				{categories}
+				onview={(t) => (viewTarget = t)}
+				onedit={(t) => (editTarget = t)}
 				ondelete={handleDelete}
 			/>
 		{/if}
 	</div>
 </div>
 
-{#if showForm}
-	<Modal title="Transaksi Baru" onclose={() => (showForm = false)}>
-		<TransactionForm {categories} {wallets} onsubmit={handleSubmit} />
+{#if viewTarget}
+	<TransactionDetailModal
+		transaction={viewTarget}
+		{wallets}
+		{categories}
+		onclose={() => (viewTarget = null)}
+		onedit={openEditFromDetail}
+	/>
+{/if}
+
+{#if editTarget}
+	<Modal title="Edit Transaksi" onclose={() => (editTarget = null)}>
+		<TransactionForm
+			{categories}
+			{wallets}
+			initial={editTarget}
+			onsubmit={handleUpdate}
+		/>
 	</Modal>
 {/if}
+
+<ScanResiModal open={scanOpen} onclose={() => (scanOpen = false)} />

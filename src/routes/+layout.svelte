@@ -43,31 +43,48 @@
 	interface NavLink {
 		href: string;
 		label: string;
-		icon: 'dashboard' | 'transactions' | 'scan' | 'admin';
+		icon: 'dashboard' | 'transactions' | 'admin';
 	}
 
 	const links: NavLink[] = [
 		{ href: '/', label: 'Dashboard', icon: 'dashboard' },
-		{ href: '/transactions', label: 'Transaksi', icon: 'transactions' },
-		{ href: '/scan', label: 'Scan Resi', icon: 'scan' }
+		{ href: '/transactions', label: 'Transaksi', icon: 'transactions' }
 	];
 
-	const navLinks = $derived<NavLink[]>(
-		authService.isAdmin ? [...links, { href: '/admin', label: 'Admin', icon: 'admin' }] : links
+	const navLinks = $derived<NavLink[]>(links);
+
+	const adminTabs: { id: string; label: string }[] = [
+		{ id: 'users', label: 'Akun' },
+		{ id: 'categories', label: 'Kategori' },
+		{ id: 'walletTypes', label: 'Tipe Dompet' },
+		{ id: 'wallets', label: 'Dompet' }
+	];
+
+	const currentTab = $derived(
+		adminTabs.find((t) => t.id === page.url.searchParams.get('tab'))?.id ?? 'users'
 	);
 
+	const isAdminPage = $derived(page.url.pathname.startsWith('/admin'));
+
 	const active = (href: string) =>
-		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+		href === '/'
+			? page.url.pathname === '/'
+			: href === '/transactions'
+				? page.url.pathname === '/transactions'
+				: page.url.pathname.startsWith(href);
 
 	const initialValues: Record<NavLink['icon'], string> = {
 		dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
 		transactions: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l2.3 2.3a1 1 0 00.7.3H17a1 1 0 00.7-.3L20 10M9 19a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z',
-		scan: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9zM15 13a3 3 0 11-6 0 3 3 0 016 0z',
 		admin: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
 	};
 
+	let adminOpen = $state(true);
+
 	const pageTitle = $derived(
-		navLinks.find((l) => active(l.href))?.label ?? ''
+		isAdminPage
+			? `Admin — ${adminTabs.find((t) => t.id === currentTab)?.label ?? 'Akun'}`
+			: navLinks.find((l) => active(l.href))?.label ?? ''
 	);
 </script>
 
@@ -125,6 +142,49 @@
 							{link.label}
 						</a>
 					{/each}
+
+					{#if authService.isAdmin}
+						<div>
+							<button
+								type="button"
+								class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {isAdminPage
+									? 'bg-indigo-600 text-white'
+									: 'text-slate-600 hover:bg-slate-100 dark:text-metadark dark:hover:bg-boxdark-2 dark:hover:text-white'}"
+								onclick={() => {
+									adminOpen = !adminOpen;
+									if (!isAdminPage) goto('/admin?tab=users');
+									else if (!adminOpen && isAdminPage) sidebarOpen = false;
+								}}
+							>
+								<svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+									<path stroke-linecap="round" stroke-linejoin="round" d={initialValues.admin} />
+								</svg>
+								<span class="flex-1 text-left">Admin</span>
+								<svg
+									class="h-4 w-4 transition-transform {adminOpen ? 'rotate-90' : ''}"
+									fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+								</svg>
+							</button>
+
+							{#if adminOpen}
+								<div class="ml-8 mt-1 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-700">
+									{#each adminTabs as tab (tab.id)}
+										<a
+											href="/admin?tab={tab.id}"
+											onclick={() => (sidebarOpen = false)}
+											class="block rounded-md px-3 py-1.5 text-sm transition-colors {isAdminPage && currentTab === tab.id
+												? 'bg-indigo-50 font-semibold text-indigo-700 dark:bg-boxdark-2 dark:text-white'
+												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:text-metadark dark:hover:bg-boxdark-2 dark:hover:text-white'}"
+										>
+											{tab.label}
+										</a>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
 				</nav>
 
 				<!-- User di bawah sidebar -->

@@ -16,10 +16,11 @@
 		for (const w of wallets) {
 			const list = map.get(w.type) ?? [];
 			list.push(w);
+			// Label tipe diambil dari tabel wallet_types (menu admin).
 			map.set(w.type, list);
 		}
 		return [...map.entries()].map(([type, list]) => ({
-			label: walletTypeLabel(type),
+			label: list[0]?.typeLabel ?? walletTypeLabel(type),
 			wallets: list
 		}));
 	});

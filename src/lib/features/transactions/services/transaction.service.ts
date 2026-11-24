@@ -17,6 +17,10 @@ class TransactionService {
 		return httpClient.post<Transaction>('/api/transactions', input);
 	}
 
+	async update(id: string, input: TransactionInput): Promise<Transaction> {
+		return httpClient.put<Transaction>(`/api/transactions/${id}`, input);
+	}
+
 	async remove(id: string): Promise<void> {
 		await httpClient.delete<void>(`/api/transactions/${id}`);
 	}

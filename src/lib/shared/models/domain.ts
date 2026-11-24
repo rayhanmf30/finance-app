@@ -35,6 +35,24 @@ export interface AdminCategory {
 	childCount: number;
 }
 
+/** Dompet milik pengguna, dilihat dari panel admin (tabel `wallets`). */
+export interface AdminWallet {
+	id: string;
+	ownerId: string;
+	ownerName: string;
+	ownerEmail: string;
+	name: string;
+	type: string;
+	/** Label tipe dari tabel wallet_types. */
+	typeLabel: string | null;
+	currency: string;
+	currentBalance: number;
+	isIncludedInTotal: boolean;
+	/** Jumlah transaksi yang memakai dompet ini (juga sebagai dompet tujuan). */
+	transactionCount: number;
+	createdAt: string;
+}
+
 export type BudgetPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type BudgetStatusType = 'SAFE' | 'WARNING' | 'EXCEEDED';
 
@@ -42,6 +60,8 @@ export interface Wallet {
 	id: string;
 	name: string;
 	type: WalletType;
+	/** Label tipe dari tabel wallet_types (dikelola admin). */
+	typeLabel?: string;
 	currency: string;
 	currentBalance: number;
 }
