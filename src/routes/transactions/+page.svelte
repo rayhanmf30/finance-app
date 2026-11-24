@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Button, Modal } from '#lib/shared/components/index';
+	import { Modal } from '#lib/shared/components/index';
 	import Input from '#lib/shared/components/Input.svelte';
+	import IconButton from '#lib/shared/components/IconButton.svelte';
+	import ConfirmModal from '#lib/shared/components/ConfirmModal.svelte';
 	import { transactionStore } from '#lib/features/transactions/transaction.store.svelte';
 	import { dashboardStore } from '#lib/features/dashboard/dashboard.store.svelte';
 	import { transactionService } from '#lib/features/transactions/services/transaction.service';
@@ -10,6 +12,7 @@
 	import TransactionForm from '#lib/features/transactions/components/TransactionForm.svelte';
 	import TransactionDetailModal from '#lib/features/transactions/components/TransactionDetailModal.svelte';
 	import ScanResiModal from '#lib/features/receipt-scanner/ScanResiModal.svelte';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
 	import { formatCurrency } from '#lib/shared/pipes/currency';
 
@@ -55,6 +58,15 @@
 		]);
 	}
 
+	function deleteTargetName(): string {
+		if (!deleteTarget) return '';
+		return (
+			deleteTarget.note ||
+			categories.find((c) => c.id === deleteTarget?.categoryId)?.name ||
+			'—'
+		);
+	}
+
 	function openEditFromDetail(t: Transaction) {
 		viewTarget = null;
 		editTarget = t;
@@ -69,7 +81,7 @@
 			await transactionStore.refresh();
 			dashboardStore.refresh();
 		} catch {
-			actionError = 'Gagal memperbarui transaksi.';
+			actionError = i18n.t('tx.failedUpdate');
 		}
 	}
 
@@ -82,7 +94,7 @@
 			deleteTarget = null;
 			dashboardStore.refresh();
 		} catch {
-			actionError = 'Gagal menghapus transaksi.';
+			actionError = i18n.t('tx.failedDelete');
 		} finally {
 			deleting = false;
 		}
@@ -104,34 +116,51 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-			Riwayat Transaksi — {formatMonthYear(transactionStore.filter.month)}
+			{i18n.t('tx.history')} — {formatMonthYear(transactionStore.filter.month)}
 		</h1>
 		<div class="flex flex-wrap gap-2">
-			<Button variant="secondary" onclick={() => (scanOpen = true)}>
-				<svg class="mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" />
-					<circle cx="12" cy="12" r="3.5" />
-				</svg>
-				Scan Resi
-			</Button>
-			<Button variant="primary" onclick={() => goto('/transactions/new')}>+ Tambah Transaksi</Button>
+			<IconButton
+				icon="scan"
+				size="md"
+				label={i18n.t('scan.title')}
+				onclick={() => (scanOpen = true)}
+			/>
+			<IconButton
+				icon="plus"
+				size="md"
+				variant="primary"
+				label={i18n.t('tx.addTransaction')}
+				onclick={() => goto('/transactions/new')}
+			/>
 		</div>
 	</div>
 
 	<div class="flex flex-wrap gap-3">
 		<div class="w-44">
-			<Input label="Bulan" type="month" bind:value={transactionStore.filter.month} />
+			<Input label={i18n.t('tx.month')} type="month" bind:value={transactionStore.filter.month} />
 		</div>
-			<form class="flex min-w-56 flex-1 flex-wrap items-end gap-2" onsubmit={(e) => { e.preventDefault(); void applySearch(); }}>
+		<form
+			class="flex min-w-56 flex-1 flex-wrap items-end gap-2"
+			onsubmit={(e) => {
+				e.preventDefault();
+				void applySearch();
+			}}
+		>
 			<div class="min-w-48 flex-1">
 				<Input
-					label="Cari"
+					label={i18n.t('tx.search')}
 					type="search"
-					placeholder="Cari catatan atau kategori…"
+					placeholder={i18n.t('tx.searchPlaceholder')}
 					bind:value={searchInput}
 				/>
 			</div>
-			<Button type="submit" variant="secondary" loading={searching}>Cari</Button>
+			<IconButton
+				type="submit"
+				size="md"
+				icon="search"
+				label={i18n.t('tx.search')}
+				loading={searching}
+			/>
 		</form>
 	</div>
 
@@ -141,7 +170,7 @@
 		</p>
 	{/if}
 
-	<div class="rounded-xl bg-white dark:bg-boxdark-2 px-5 py-2 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+	<div class="rounded-xl bg-white px-5 py-2 shadow-sm ring-1 ring-slate-200 dark:bg-boxdark-2 dark:ring-slate-700">
 		<!-- Tabel selalu dirender: header tetap, hanya body yang berubah saat memuat. -->
 		<TransactionList
 			transactions={transactionStore.transactions}
@@ -154,23 +183,20 @@
 	</div>
 </div>
 
-<!-- Modal konfirmasi hapus -->
-{#if deleteTarget}
-	<Modal title="Hapus Transaksi" onclose={() => (deleteTarget = null)}>
-		<p class="text-sm text-slate-600 dark:text-slate-300">
-			Apakah Anda yakin akan menghapus transaksi ini
-			<strong class="font-semibold text-slate-900 dark:text-white">
-				“{deleteTarget.note || deleteTarget.categoryId}”
-			</strong>
-			({formatCurrency(deleteTarget.amount)})?
-		</p>
-		<p class="mt-1 text-xs text-slate-500 dark:text-slate-400 dark:text-metadark">Saldo dompet akan dikembalikan dan tindakan ini tidak dapat dibatalkan.</p>
-		<div class="mt-4 flex justify-end gap-2">
-			<Button variant="ghost" onclick={() => (deleteTarget = null)}>Batal</Button>
-			<Button variant="danger" loading={deleting} onclick={() => void handleDelete()}>Hapus</Button>
-		</div>
-	</Modal>
-{/if}
+<!-- Modal konfirmasi hapus — WAJIB dikonfirmasi sebelum menghapus. -->
+<ConfirmModal
+	open={deleteTarget !== null}
+	title={i18n.t('tx.deleteTitle')}
+	message={
+		i18n.t('tx.deleteMessage', { note: deleteTargetName() }) +
+		(deleteTarget ? ` (${formatCurrency(deleteTarget.amount)})` : '')
+	}
+	warning={i18n.t('tx.deleteWarning')}
+	confirmLabel={i18n.t('common.delete')}
+	confirmLoading={deleting}
+	onconfirm={() => void handleDelete()}
+	oncancel={() => (deleteTarget = null)}
+/>
 
 {#if viewTarget}
 	<TransactionDetailModal
@@ -185,7 +211,7 @@
 {/if}
 
 {#if editTarget}
-	<Modal title="Edit Transaksi" onclose={() => (editTarget = null)}>
+	<Modal title={i18n.t('tx.editTitle')} onclose={() => (editTarget = null)}>
 		<TransactionForm
 			{categories}
 			{wallets}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatCurrency } from '#lib/shared/pipes/currency';
 	import { formatMonthYear } from '#lib/shared/pipes/date';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 	import type { BudgetInput, Category } from '#lib/shared/models/domain';
 	import { dashboardStore } from '#lib/features/dashboard/dashboard.store.svelte';
 	import SummaryCard from '#lib/features/dashboard/components/SummaryCard.svelte';
@@ -10,11 +11,13 @@
 	import { budgetStore } from '#lib/features/budgets/budgets.store.svelte';
 	import BudgetStatusCard from '#lib/features/budgets/components/BudgetStatusCard.svelte';
 	import BudgetFormModal from '#lib/features/budgets/components/BudgetFormModal.svelte';
-	import { Button } from '#lib/shared/components/index';
+	import { IconButton } from '#lib/shared/components/index';
 	import TransactionList from '#lib/features/transactions/components/TransactionList.svelte';
+	import ScanResiModal from '#lib/features/receipt-scanner/ScanResiModal.svelte';
 
 	let categories = $state<Category[]>([]);
 	let showBudgetForm = $state(false);
+	let scanOpen = $state(false);
 	let savingBudget = $state(false);
 	let budgetError = $state<string | null>(null);
 
@@ -38,7 +41,7 @@
 			await budgetStore.create(input);
 			showBudgetForm = false;
 		} catch {
-			budgetError = 'Gagal menyimpan budget.';
+			budgetError = i18n.t('dash.failedSaveBudget');
 		} finally {
 			savingBudget = false;
 		}
@@ -48,14 +51,10 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-2">
 		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-			Ringkasan {formatMonthYear(dashboardStore.month)}
+			{i18n.t('dash.title')} {formatMonthYear(dashboardStore.month)}
 		</h1>
-		<a
-			href="/scan"
-			class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-		>
-			📷 Scan Resi
-		</a>
+		<!-- Scan resi dibuka sebagai modal di dashboard (route /scan sudah tidak ada). -->
+		<IconButton variant="primary" icon="scan" size="md" label={i18n.t('dash.scanReceipt')} onclick={() => (scanOpen = true)} />
 	</div>
 
 	{#if dashboardStore.error}
@@ -70,14 +69,14 @@
 		</div>
 	{:else}
 		<div class="grid gap-4 sm:grid-cols-3">
-			<SummaryCard label="Total Saldo" value={formatCurrency(dashboardStore.totalBalance)} />
+			<SummaryCard label={i18n.t('dash.totalBalance')} value={formatCurrency(dashboardStore.totalBalance)} />
 			<SummaryCard
-				label="Pemasukan Bulan Ini"
+				label={i18n.t('dash.incomeThisMonth')}
 				value={formatCurrency(dashboardStore.summary.totalIncome)}
 				tone="positive"
 			/>
 			<SummaryCard
-				label="Pengeluaran Bulan Ini"
+				label={i18n.t('dash.expenseThisMonth')}
 				value={formatCurrency(dashboardStore.summary.totalExpense)}
 				tone="negative"
 			/>
@@ -87,26 +86,26 @@
 	<div class="grid gap-4 lg:grid-cols-2">
 		<section class="rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
 			<div class="mb-4 flex items-center justify-between">
-				<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">Status Anggaran</h3>
-				<Button variant="secondary" onclick={() => (showBudgetForm = true)}>+ Atur Budget</Button>
+				<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('dash.budgetStatus')}</h3>
+				<IconButton variant="primary" icon="plus" label={i18n.t('dash.setupBudget')} onclick={() => (showBudgetForm = true)} />
 			</div>
-			{#if budgetStore.error}
-				<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{budgetStore.error}</p>
+			{#if budgetError}
+				<p class="rounded-lg bg-red-50 p-3 text-sm text-red-700">{budgetError}</p>
 			{/if}
 			<BudgetStatusCard rows={budgetStore.rows} loading={budgetStore.loading} />
 		</section>
 
 		<section class="rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-			<h3 class="mb-4 text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">Pengeluaran per Kategori</h3>
+			<h3 class="mb-4 text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('dash.expenseByCategory')}</h3>
 			<CashflowChart breakdown={dashboardStore.breakdown} />
 		</section>
 	</div>
 
 	<section class="rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
 		<div class="mb-2 flex items-center justify-between">
-			<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">Transaksi Terakhir</h3>
+			<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 dark:text-metadark">{i18n.t('dash.recent')}</h3>
 			<a href="/transactions" class="text-xs font-medium text-indigo-600 hover:underline">
-				Lihat semua
+				{i18n.t('dash.viewAll')}
 			</a>
 		</div>
 		<TransactionList transactions={recent} {categories} />
@@ -121,3 +120,5 @@
 		onclose={() => (showBudgetForm = false)}
 	/>
 {/if}
+
+<ScanResiModal open={scanOpen} onclose={() => (scanOpen = false)} />
