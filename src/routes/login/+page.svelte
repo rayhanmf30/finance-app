@@ -64,7 +64,7 @@
 				<p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{errorMessage}</p>
 			{/if}
 
-			<Button type="submit" disabled={submitting}>
+			<Button type="submit" loading={submitting}>
 				{submitting ? 'Memproses…' : 'Masuk'}
 			</Button>
 		</form>
