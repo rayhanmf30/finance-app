@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     -- destination_wallet_id wajib hanya untuk TRANSFER
     CHECK ((type = 'TRANSFER') = (destination_wallet_id IS NOT NULL)),
     -- category_id wajib kosong untuk TRANSFER
-    CHECK ((type = 'TRANSFER') = (category_id IS NULL)),
+    CHECK (type <> 'TRANSFER' OR category_id IS NULL),
     -- transfer ke dompet sendiri tidak valid
     CHECK (destination_wallet_id IS NULL OR destination_wallet_id <> wallet_id)
 );

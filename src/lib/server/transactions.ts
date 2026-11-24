@@ -134,14 +134,22 @@ export async function createTransaction(userId: string, input: CreateTransaction
 		const walletIds =
 			input.type === 'TRANSFER' ? [input.walletId, input.destinationWalletId!] : [input.walletId];
 
-		const locked = await tx`
-			SELECT id FROM wallets
+		const locked = await tx<{ id: string; current_balance: string }[]>`
+			SELECT id, current_balance FROM wallets
 			WHERE user_id = ${userId} AND id IN ${tx(walletIds)}
 			ORDER BY id
 			FOR UPDATE
 		`;
 		if (locked.length !== walletIds.length) {
 			error(400, 'Dompet tidak ditemukan.');
+		}
+
+		// Saldo dompet sumber tidak boleh minus akibat transfer.
+		if (input.type === 'TRANSFER') {
+			const source = locked.find((w) => w.id === input.walletId)!;
+			if (Number(source.current_balance) < amount) {
+				error(400, 'Saldo dompet sumber tidak cukup untuk transfer ini.');
+			}
 		}
 
 		const rows = await tx<TransactionRow[]>`
@@ -217,8 +225,8 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 				].filter((wid): wid is string => Boolean(wid))
 			)
 		);
-		const locked = await tx`
-			SELECT id FROM wallets
+		const locked = await tx<{ id: string; current_balance: string }[]>`
+			SELECT id, current_balance FROM wallets
 			WHERE user_id = ${userId} AND id IN ${tx(involved)}
 			ORDER BY id
 			FOR UPDATE
@@ -251,6 +259,17 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 		} else {
 			add(input.walletId, -amount);
 			add(input.destinationWalletId!, amount);
+		}
+
+		// Saldo dompet sumber tidak boleh minus akibat transfer.
+		// Proyeksi = saldo terkini (dompet sudah terkunci) + delta gabungan (efek lama dibalik + efek baru).
+		if (input.type === 'TRANSFER') {
+			const source = locked.find((w) => w.id === input.walletId)!;
+			const projected =
+				Number(source.current_balance) + (deltas.get(input.walletId) ?? 0);
+			if (projected < 0) {
+				error(400, 'Saldo dompet sumber tidak cukup untuk transfer ini.');
+			}
 		}
 
 		for (const [walletId, delta] of deltas) {

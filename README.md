@@ -30,7 +30,10 @@ npm run dev
 
 File `server/migrations/` berisi migrasi Inkremental untuk database yang sudah berjalan (Supabase/Vercel). Terapkan manual via SQL editor Supabase atau `psql`:
 
-- `002_transaction_items_discount.sql` — kolom `discount DECIMAL(15,2) NOT NULL DEFAULT 0` pada tabel `transaction_items` (untuk diskon per barang hasil scan resi). Untuk database baru cukup jalankan `server/schema.sql` yang sudah termasuk kolom ini.
+- `002_transaction_items_discount.sql` — kolom `discount DECIMAL(15,2) NOT NULL DEFAULT 0` pada tabel `transaction_items` (untuk diskon per barang hasil scan resi).
+- `003_transactions_category_check.sql` — perbaikan constraint `transactions`: kategori wajib kosong hanya untuk TRANSFER; INCOME/EXPENSE kini boleh tanpa kategori (constraint lama keliru mewajibkannya).
+
+Untuk database baru cukup jalankan `server/schema.sql` yang sudah termasuk semua perbaikan ini.
 
 ### API Endpoint
 
@@ -177,6 +180,8 @@ Aplikasi dapat di-*install* ke home screen (Android/iOS/desktop):
 - **Standar pencarian:** di semua halaman, filter pencarian hanya diterapkan setelah tombol **Cari** ditekan (bukan live saat mengetik). Saat memuat/mencari, **tabel tidak dihilangkan** — hanya body (`tbody`) yang diganti skeleton, header tabel tetap tampil.
 - **Tambah Transaksi:** halaman khusus `/transactions/new` dengan form transaksi penuh, diakses lewat tombol "+ Tambah Transaksi" pada halaman transaksi.
 - **Scan Resi:** berupa **modal di halaman transaksi** (tombol "Scan Resi" di samping "Tambah Transaksi" — tidak lagi route terpisah). drag-and-drop gambar (jpg/png/webp, maks 5MB), kompresi sisi klien, ekstraksi terstruktur via **AI Groq** (merchant, tanggal, item + harga/diskon, pajak/diskon, total). Hasil scan disimpan sebagai **satu transaksi lengkap dengan rincian barangnya** ke tabel `transaction_items` (nama, quantity, harga satuan, diskon) — ditampilkan pada modal detail transaksi.
+
+- **Validasi saldo transfer:** saldo dompet **tidak boleh minus** akibat TRANSFER — server menolak (400 "Saldo dompet sumber tidak cukup untuk transfer ini.") saat membuat transfer yang melebihi saldo, maupun saat mengedit transfer (mis. menaikkan nominal atau membalik arah) yang membuat saldo proyeksi dompet sumber negatif.
 
 > Ekstraksi memakai model vision Groq (`https://api.groq.com/openai/v1/chat/completions`) secara server-side. Atur env `GROQ_API_KEY` dan opsional `GROQ_MODEL` (default `meta-llama/llama-4-scout-17b-16e-instruct`). Bila key kosong, server memakai data *mock* agar alur tetap bisa dicoba.
 
