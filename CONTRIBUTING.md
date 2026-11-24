@@ -61,3 +61,26 @@ docs(readme): dokumentasi panel admin dan migrasi 001
 - Perubahan skema DB (`server/schema.sql` / `server/migrations/*`) selalu commit sendiri dengan scope `db`.
 - File yang berhubungan satu unit logis boleh satu commit (mis. service + endpoint + UI satu fitur).
 - Commit kecil & fokus memudahkan `git revert`, review, dan mencari asal-usul perubahan.
+
+## Standar Halaman Baru (UI)
+
+Format baku saat membuat halaman baru di `src/routes/` — mengikuti pola halaman **Transaksi** dan **Panel Admin** (TailAdmin style, dukung tema gelap):
+
+1. **Wrapper** — `<div class="space-y-6">`. Layout shell (`<main class="flex-1 px-4 py-6 sm:px-6">`) yang menyediakan padding; halaman hanya mengatur spasi antar bagian.
+2. **Heading kontekstual** — di bagian atas:
+   ```svelte
+   <div class="flex flex-wrap items-center justify-between gap-3">
+       <h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+           Nama Halaman — {konteks}
+       </h1>
+       <!-- tombol aksi utama di kanan (opsional) -->
+   </div>
+   ```
+3. **Navigasi berbasis query param** — halaman dengan beberapa tab/segment (**tidak menampilkan tombol tab** navigasinya; navigasi dikendalikan menu sidebar, lihat menu tree Admin):
+   - tab aktif diambil dari `page.url.searchParams.get('tab')` via `$derived` (validasi daftar tab);
+   - pindah tab memakai `goto('/halaman?tab=xxx')`;
+   - data dimuat ulang tiap tab berubah via `$effect`.
+4. **Konten** — di dalam `<Card>` (atau `rounded-xl bg-white dark:bg-boxdark-2 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`) dengan tabel `overflow-x-auto` bila perlu.
+5. **Pesan** — notice hijau `bg-emerald-50 ... text-emerald-700`, error merah `bg-red-50 ... text-red-700`, placeholder loading skeleton `animate-pulse`.
+6. **Tema gelap wajib** — setiap kelas warna terang wajib punya pasangan `dark:` (`text-slate-700 dark:text-slate-200`, `bg-slate-100 dark:bg-boxdark-2`, dll.).
+7. **Data & state** — halaman memanggil service; komponen `features/*/components/` murni props/callback (Svelte 5 runes, tanpa `createEventDispatcher`).
