@@ -25,14 +25,11 @@ class ReceiptStore {
 		}
 	}
 
-	async save(inputs: Omit<TransactionInput, 'type'>[]): Promise<void> {
-		if (inputs.length === 0) return;
+	async save(input: Omit<TransactionInput, 'type'>): Promise<void> {
 		this.status = 'saving';
 
 		try {
-			for (const input of inputs) {
-				await transactionService.create({ ...input, type: 'EXPENSE' });
-			}
+			await transactionService.create({ ...input, type: 'EXPENSE' });
 			this.status = 'saved';
 		} catch {
 			this.error = 'Gagal menyimpan transaksi.';

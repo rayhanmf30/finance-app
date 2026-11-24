@@ -13,7 +13,7 @@
 		categories: Category[];
 		wallets: Wallet[];
 		saving?: boolean;
-		onsave: (inputs: Omit<TransactionInput, 'type'>[]) => void;
+		onsave: (input: Omit<TransactionInput, 'type'>) => void;
 		onclose: () => void;
 	}
 
@@ -27,7 +27,6 @@
 		onclose
 	}: Props = $props();
 
-	let mode = $state<'single' | 'items'>('single');
 	let merchantName = $state(untrack(() => extraction.merchantName));
 	let total = $state(untrack(() => extraction.total));
 	let date = $state(untrack(() => extraction.transactionDate.slice(0, 10)));
@@ -40,36 +39,31 @@
 
 	const expenseCategories = $derived(categories.filter((c) => c.type === 'EXPENSE'));
 	const itemsTotal = $derived(
-		extraction.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) +
+		extraction.items.reduce(
+			(sum, item) => sum + item.quantity * item.unitPrice - (item.discount ?? 0),
+			0
+		) +
 			extraction.tax -
 			extraction.discount
 	);
 
+	/** Semua barang struk disimpan sebagai satu transaksi beserta rinciannya (transaction_items). */
 	function save() {
 		const transactionDate = new Date(`${date}T12:00:00`).toISOString();
 
-		if (mode === 'single') {
-			onsave([
-				{
-					walletId,
-					categoryId: categoryId || null,
-					amount: total,
-					transactionDate,
-					note: merchantName
-				}
-			]);
-			return;
-		}
-
-		onsave(
-			extraction.items.map((item) => ({
-				walletId,
-				categoryId: categoryId || null,
-				amount: item.quantity * item.unitPrice,
-				transactionDate,
-				note: `${merchantName} — ${item.name}`
+		onsave({
+			walletId,
+			categoryId: categoryId || null,
+			amount: total,
+			transactionDate,
+			note: merchantName,
+			items: extraction.items.map((item) => ({
+				name: item.name,
+				quantity: item.quantity,
+				unitPrice: item.unitPrice,
+				discount: item.discount ?? 0
 			}))
-		);
+		});
 	}
 </script>
 
@@ -84,49 +78,41 @@
 		{/if}
 
 		<form class="space-y-3" onsubmit={(event) => { event.preventDefault(); save(); }}>
-			<div class="mb-1 grid grid-cols-2 gap-2">
-				<button
-					type="button"
-					class="cursor-pointer rounded-lg border px-2 py-1.5 text-xs font-medium {mode === 'single'
-						? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-						: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
-					onclick={() => (mode = 'single')}
-				>
-					Satu transaksi
-				</button>
-				<button
-					type="button"
-					class="cursor-pointer rounded-lg border px-2 py-1.5 text-xs font-medium {mode === 'items'
-						? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-						: 'border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 dark:text-metadark'}"
-					onclick={() => (mode = 'items')}
-				>
-					Pecah per item
-				</button>
-			</div>
-
 			<Input label="Merchant" bind:value={merchantName} />
 			<Input label="Tanggal" type="date" bind:value={date} required />
+			<Input label="Total" type="number" min="1" step="any" bind:value={total} required />
 
-			{#if mode === 'single'}
-				<Input label="Total" type="number" min="1" step="any" bind:value={total} required />
-			{:else}
-				<div class="rounded-lg bg-slate-50 dark:bg-boxdark p-3 text-xs text-slate-600 dark:text-slate-300">
-					<p class="mb-2 font-semibold">Rincian item ({extraction.items.length})</p>
-					<ul class="space-y-1">
-						{#each extraction.items as item (item.name)}
-							<li class="flex justify-between">
-								<span>{item.name} × {item.quantity}</span>
-								<span>{formatCurrency(item.quantity * item.unitPrice)}</span>
-							</li>
+			<div class="rounded-lg bg-slate-50 dark:bg-boxdark p-3 text-xs text-slate-600 dark:text-slate-300">
+				<p class="mb-2 font-semibold">Rincian barang ({extraction.items.length})</p>
+				<table class="w-full text-left">
+					<thead class="text-slate-400 dark:text-metadark">
+						<tr>
+							<th class="py-1">Barang</th>
+							<th class="py-1 text-right">Qty</th>
+							<th class="py-1 text-right">Harga</th>
+							<th class="py-1 text-right">Diskon</th>
+							<th class="py-1 text-right">Subtotal</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-slate-200 dark:divide-slate-700/60">
+						{#each extraction.items as item, index (index)}
+							<tr>
+								<td class="py-1 pr-2">{item.name}</td>
+								<td class="py-1 text-right">{item.quantity}×</td>
+								<td class="py-1 text-right">{formatCurrency(item.unitPrice)}</td>
+								<td class="py-1 text-right">{item.discount ? `− ${formatCurrency(item.discount)}` : '—'}</td>
+								<td class="py-1 text-right font-medium">
+									{formatCurrency(item.subtotal ?? item.quantity * item.unitPrice - (item.discount ?? 0))}
+								</td>
+							</tr>
 						{/each}
-					</ul>
-					<p class="mt-2 flex justify-between border-t border-slate-200 dark:border-slate-700/60 pt-2 font-semibold">
-						<span>Total item</span>
-						<span>{formatCurrency(itemsTotal)}</span>
-					</p>
-				</div>
-			{/if}
+					</tbody>
+				</table>
+				<p class="mt-2 flex justify-between border-t border-slate-200 dark:border-slate-700/60 pt-2 font-semibold">
+					<span>Total item</span>
+					<span>{formatCurrency(itemsTotal)}</span>
+				</p>
+			</div>
 
 			<Select
 				label="Kategori"
@@ -136,7 +122,7 @@
 			<WalletSelect wallets={wallets} bind:value={walletId} />
 
 			<div class="pt-1">
-				<Button type="submit" variant="primary" disabled={saving}>
+				<Button type="submit" variant="primary" loading={saving}>
 					{saving ? 'Menyimpan…' : 'Simpan Transaksi'}
 				</Button>
 			</div>
