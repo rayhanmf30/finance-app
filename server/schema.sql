@@ -1,7 +1,7 @@
 -- =============================================================
 -- FinanceApp — Skema Database (PostgreSQL 14+)
--- Sesuai ERD: users, wallets, categories, transactions,
--- transaction_items, budgets, budget_alerts, recurring_transactions
+-- Sesuai ERD: users, wallets, wallet_types, categories, transactions,
+-- transaction_items, budgets, budget_categories, budget_alerts, recurring_transactions
 -- =============================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -128,12 +128,12 @@ CREATE INDEX IF NOT EXISTS idx_transaction_items_transaction
     ON transaction_items (transaction_id);
 
 -- -------------------------------------------------------------
--- budgets (batas pengeluaran per kategori atau global)
+-- budgets (batas pengeluaran untuk sekumpulan kategori atau global)
+-- Budget tanpa baris di budget_categories = budget GLOBAL (semua pengeluaran).
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS budgets (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id               UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category_id           UUID        NULL REFERENCES categories(id) ON DELETE CASCADE,
     period_type           VARCHAR(10) NOT NULL CHECK (period_type IN ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY')),
     limit_amount          DECIMAL(15,2) NOT NULL CHECK (limit_amount > 0),
     warning_threshold_pct INT         NOT NULL DEFAULT 80 CHECK (warning_threshold_pct BETWEEN 1 AND 100),
@@ -142,7 +142,16 @@ CREATE TABLE IF NOT EXISTS budgets (
     updated_at            TIMESTAMP   NOT NULL DEFAULT NOW()
 );
 
+-- budget_categories (banyak kategori per budget, N:M)
+CREATE TABLE IF NOT EXISTS budget_categories (
+    budget_id    UUID NOT NULL REFERENCES budgets(id)    ON DELETE CASCADE,
+    category_id  UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+
+    PRIMARY KEY (budget_id, category_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_budgets_user_active ON budgets (user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_budget_categories_category ON budget_categories (category_id);
 
 -- -------------------------------------------------------------
 -- budget_alerts (log peringatan + anti-spam per periode)

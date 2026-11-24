@@ -128,8 +128,9 @@ export interface CategoryBreakdown {
 
 export interface BudgetStatusRow {
 	budgetId: string;
-	categoryId: string | null;
-	categoryName: string;
+	/** Kategori yang dicakup budget; kosong = global (semua pengeluaran). */
+	categoryIds: string[];
+	categoryNames: string[];
 	periodType: BudgetPeriodType;
 	periodKey: string;
 	limitAmount: number;
@@ -140,7 +141,8 @@ export interface BudgetStatusRow {
 }
 
 export interface BudgetInput {
-	categoryId: string | null;
+	/** Sudah kategori terpilih; array kosong = budget global (semua pengeluaran). */
+	categoryIds: string[];
 	periodType: BudgetPeriodType;
 	limitAmount: number;
 	warningThresholdPct: number;

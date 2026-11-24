@@ -28,6 +28,11 @@
 		WARNING: 'bg-amber-500',
 		EXCEEDED: 'bg-red-500'
 	};
+
+	/** Nama kategori gabungan; array kosong = budget global. */
+	function labelFor(row: BudgetStatusRow): string {
+		return row.categoryNames.length > 0 ? row.categoryNames.join(', ') : i18n.t('dash.globalCategory');
+	}
 </script>
 
 {#if loading}
@@ -40,7 +45,7 @@
 			<li>
 				<div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-sm">
 					<span class="font-medium text-slate-700 dark:text-slate-200">
-						{row.categoryName}
+						{labelFor(row)}
 						<span class="text-xs font-normal text-slate-400 dark:text-metadark">
 							({periodLabels[row.periodType]} · {row.periodKey})
 						</span>

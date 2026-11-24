@@ -42,8 +42,16 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Budget bulanan: makan & minum 1 juta (threshold 80%), global 5 juta
-INSERT INTO budgets (id, user_id, category_id, period_type, limit_amount, warning_threshold_pct)
+INSERT INTO budgets (id, user_id, period_type, limit_amount, warning_threshold_pct)
 VALUES
-    ('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'MONTHLY', 1000000.00, 80),
-    ('40000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', NULL, 'MONTHLY', 5000000.00, 80)
+    ('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'MONTHLY', 1000000.00, 80),
+    ('40000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'MONTHLY', 5000000.00, 80)
 ON CONFLICT (id) DO NOTHING;
+
+-- Budget 1 mencakup dua kategori (Makan & Minum + anaknya Kopi & Jajan);
+-- kosongkan relasi = budget global (semua pengeluaran).
+INSERT INTO budget_categories (budget_id, category_id)
+VALUES
+    ('40000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002'),
+    ('40000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003')
+ON CONFLICT (budget_id, category_id) DO NOTHING;

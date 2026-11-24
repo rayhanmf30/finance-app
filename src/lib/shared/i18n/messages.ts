@@ -31,6 +31,10 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'common.subtotal': 'Subtotal',
 		'common.optional': 'opsional',
 		'budget.threshold': 'Threshold peringatan (%)',
+		'budget.categories': 'Kategori (bisa pilih lebih dari satu)',
+		'budget.globalHint': 'Kosongkan semua = budget global (semua pengeluaran).',
+		'budget.selectedCount': 'Kategori terpilih:',
+		'budget.failedLoad': 'Gagal memuat budget.',
 		'errors.generic': 'Terjadi kesalahan.',
 
 		// ---- Navigasi ----
@@ -320,6 +324,10 @@ export const translations: Record<Locale, Record<string, string>> = {
 		'common.subtotal': 'Subtotal',
 		'common.optional': 'optional',
 		'budget.threshold': 'Warning threshold (%)',
+		'budget.categories': 'Categories (you can pick more than one)',
+		'budget.globalHint': 'Leave all unchecked = global budget (all expenses).',
+		'budget.selectedCount': 'Selected categories:',
+		'budget.failedLoad': 'Failed to load budgets.',
 		'errors.generic': 'Something went wrong.',
 
 		// ---- Navigation ----

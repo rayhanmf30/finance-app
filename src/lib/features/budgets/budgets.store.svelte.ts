@@ -1,4 +1,5 @@
 import type { BudgetInput, BudgetStatusRow } from '#lib/shared/models/domain';
+import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 import { budgetService } from './services/budget.service';
 
 class BudgetStore {
@@ -12,7 +13,7 @@ class BudgetStore {
 		try {
 			this.rows = await budgetService.list();
 		} catch {
-			this.error = 'Gagal memuat budget.';
+			this.error = i18n.t('budget.failedLoad');
 		} finally {
 			this.loading = false;
 		}
