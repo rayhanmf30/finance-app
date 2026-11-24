@@ -26,6 +26,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(400, 'Ukuran maksimal 5MB.');
 	}
 
-	const extraction = await parseReceipt(userId);
+	const buffer = Buffer.from(await file.arrayBuffer());
+	const dataUrl = `data:${file.type};base64,${buffer.toString('base64')}`;
+
+	const extraction = await parseReceipt(userId, dataUrl);
 	return json(extraction);
 };

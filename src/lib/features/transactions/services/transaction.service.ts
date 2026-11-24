@@ -17,6 +17,11 @@ class TransactionService {
 		return httpClient.post<Transaction>('/api/transactions', input);
 	}
 
+	/** Detail transaksi + rincian barang (transaction_items). */
+	async get(id: string): Promise<Transaction> {
+		return httpClient.get<Transaction>(`/api/transactions/${id}`);
+	}
+
 	async update(id: string, input: TransactionInput): Promise<Transaction> {
 		return httpClient.put<Transaction>(`/api/transactions/${id}`, input);
 	}

@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS transaction_items (
     name           VARCHAR(150) NOT NULL,
     quantity       DECIMAL(10,3) NOT NULL DEFAULT 1 CHECK (quantity > 0),
     unit_price     DECIMAL(15,2) NOT NULL DEFAULT 0.00 CHECK (unit_price >= 0),
+    discount       DECIMAL(15,2) NOT NULL DEFAULT 0.00 CHECK (discount >= 0),
     category_id    UUID         NULL REFERENCES categories(id),
     created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
 );

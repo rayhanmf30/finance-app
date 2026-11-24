@@ -23,9 +23,20 @@ export const adminService = {
 	},
 	async updateUser(
 		id: string,
-		body: { isBlocked?: boolean; blockReason?: string; role?: 'user' | 'admin' }
+		body: { isBlocked?: boolean; blockReason?: string; role?: 'user' | 'admin'; name?: string; email?: string }
 	): Promise<AdminUser> {
 		return httpClient.patch<AdminUser>(`/api/admin/users/${id}`, body);
+	},
+	async createUser(body: {
+		name: string;
+		email: string;
+		password: string;
+		role?: 'user' | 'admin';
+	}): Promise<{ id: string }> {
+		return httpClient.post<{ id: string }>('/api/admin/users', body);
+	},
+	async deleteUser(id: string): Promise<void> {
+		await httpClient.delete(`/api/admin/users/${id}`);
 	},
 	async changePassword(id: string, newPassword: string): Promise<void> {
 		await httpClient.patch(`/api/admin/users/${id}/password`, { newPassword });

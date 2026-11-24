@@ -27,5 +27,13 @@ export const variables = defineEnvVars({
 	},
 	AUTH_SECRET: {
 		schema: (value) => value
+	},
+	/** API key Groq untuk ekstraksi struk (opsional — tanpa ini pakai mock). */
+	GROQ_API_KEY: {
+		schema: (value) => value
+	},
+	/** Model vision Groq, default meta-llama/llama-4-scout-17b-16e-instruct. */
+	GROQ_MODEL: {
+		schema: (value) => value
 	}
 });

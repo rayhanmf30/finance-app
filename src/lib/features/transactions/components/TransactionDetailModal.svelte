@@ -8,11 +8,16 @@
 		transaction: Transaction;
 		wallets: Wallet[];
 		categories: Category[];
+		/** Rincian barang dimuat dari API oleh halaman; fallback ke item pada transaction. */
+		items?: Transaction['items'] | null;
+		itemsLoading?: boolean;
 		onclose: () => void;
 		onedit?: (transaction: Transaction) => void;
 	}
 
-	let { transaction, wallets, categories, onclose, onedit }: Props = $props();
+	let { transaction, wallets, categories, items = undefined, itemsLoading = false, onclose, onedit }: Props = $props();
+
+	const displayItems = $derived(items ?? transaction.items ?? []);
 
 	const walletName = $derived(wallets.find((w) => w.id === transaction.walletId)?.name ?? '—');
 	const destinationName = $derived(
@@ -47,6 +52,35 @@
 			</div>
 		{/each}
 	</dl>
+	{#if itemsLoading}
+		<p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Memuat rincian barang…</p>
+	{:else if displayItems.length > 0}
+		<div class="mt-4 rounded-lg bg-slate-50 dark:bg-boxdark p-3">
+			<p class="mb-2 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 dark:text-metadark">Rincian barang ({displayItems.length})</p>
+			<table class="w-full text-left text-xs">
+				<thead class="text-slate-400 dark:text-metadark">
+					<tr>
+						<th class="py-1">Barang</th>
+						<th class="py-1 text-right">Qty</th>
+						<th class="py-1 text-right">Harga</th>
+						<th class="py-1 text-right">Diskon</th>
+						<th class="py-1 text-right">Subtotal</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-slate-200 dark:divide-slate-700/60 text-slate-700 dark:text-slate-200">
+					{#each displayItems as item, index (index)}
+						<tr>
+							<td class="py-1 pr-2">{item.name}</td>
+							<td class="py-1 text-right">{item.quantity}×</td>
+							<td class="py-1 text-right">{formatCurrency(item.unitPrice)}</td>
+							<td class="py-1 text-right">{item.discount ? `− ${formatCurrency(item.discount)}` : '—'}</td>
+							<td class="py-1 text-right font-medium">{formatCurrency(item.quantity * item.unitPrice - (item.discount ?? 0))}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	{/if}
 	{#if onedit && transaction.type !== 'TRANSFER'}
 		<div class="mt-4 flex justify-end">
 			<Button onclick={() => onedit?.(transaction)}>Edit Transaksi</Button>

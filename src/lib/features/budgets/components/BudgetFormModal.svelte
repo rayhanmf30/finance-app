@@ -61,7 +61,7 @@
 		/>
 
 		<div class="pt-2">
-			<Button type="submit" variant="primary" disabled={saving}>
+			<Button type="submit" variant="primary" loading={saving}>
 				{saving ? 'Menyimpan…' : 'Simpan Budget'}
 			</Button>
 		</div>

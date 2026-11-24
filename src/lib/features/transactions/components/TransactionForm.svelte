@@ -8,7 +8,8 @@
 	interface Props {
 		categories: Category[];
 		wallets: Wallet[];
-		onsubmit: (input: TransactionInput) => void;
+		/** Boleh async — form menunggu sampai proses benar-benar selesai sebelum mengizinkan submit lagi. */
+		onsubmit: (input: TransactionInput) => void | Promise<void>;
 		/** Diisi saat mode edit transaksi (prefill nilai lama). */
 		initial?: Transaction | null;
 	}
@@ -35,21 +36,30 @@
 
 	const visibleCategories = $derived(categories.filter((c) => c.type === type));
 
-	function submit(event: SubmitEvent) {
+	let submitting = $state(false);
+
+	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		if (amount <= 0 || !walletId) return;
+		if (submitting || amount <= 0 || !walletId) return;
 
-		onsubmit({
-			type,
-			amount,
-			walletId,
-			categoryId: categoryId || null,
-			transactionDate: new Date(`${date}T12:00:00`).toISOString(),
-			note
-		});
-
-		amount = 0;
-		note = '';
+		submitting = true;
+		try {
+			await onsubmit({
+				type,
+				amount,
+				walletId,
+				categoryId: categoryId || null,
+				transactionDate: new Date(`${date}T12:00:00`).toISOString(),
+				note
+			});
+			// Input hanya dikosongkan setelah proses berhasil (mode tanpa prefill/navigasi).
+			if (!initial) {
+				amount = 0;
+				note = '';
+			}
+		} finally {
+			submitting = false;
+		}
 	}
 </script>
 
@@ -89,6 +99,8 @@
 	<Input label="Catatan (opsional)" placeholder="Keterangan singkat" bind:value={note} />
 
 	<div class="pt-2">
-		<Button type="submit" variant="primary">{initial ? 'Simpan Perubahan' : 'Simpan Transaksi'}</Button>
+		<Button type="submit" variant="primary" loading={submitting}>
+			{initial ? 'Simpan Perubahan' : 'Simpan Transaksi'}
+		</Button>
 	</div>
 </form>

@@ -31,6 +31,13 @@
 	// ---- Akun ----
 	let users = $state<AdminUser[]>([]);
 	let searchQuery = $state('');
+	let searchingUser = $state(false);
+	let accountModalMode = $state<'add' | 'edit' | null>(null);
+	let accountForm = $state<{ id: string; name: string; email: string; password: string; role: 'user' | 'admin' }>(
+		{ id: '', name: '', email: '', password: '', role: 'user' }
+	);
+	let deleteTarget = $state<AdminUser | null>(null);
+	let deletingUser = $state(false);
 	let blockTarget = $state<AdminUser | null>(null);
 	let blockReason = $state('');
 	let passwordTarget = $state<AdminUser | null>(null);
@@ -76,6 +83,19 @@
 
 	async function loadUsers() {
 		users = await adminService.listUsers(searchQuery);
+	}
+
+	/** Pencarian akun hanya diterapkan setelah tombol Cari ditekan. */
+	async function applyUserSearch() {
+		if (searchingUser) return;
+		searchingUser = true;
+		try {
+			users = await adminService.listUsers(searchQuery);
+		} catch (err) {
+			showError(err);
+		} finally {
+			searchingUser = false;
+		}
 	}
 
 	async function loadCategories() {
@@ -183,6 +203,55 @@
 			await adminService.changePassword(target.id, newPassword);
 			newPassword = '';
 		}, `Password akun ${target.name} berhasil diganti.`);
+	}
+
+	// ---- Akun: tambah / edit / hapus ----
+	function openAccountAdd() {
+		accountForm = { id: '', name: '', email: '', password: '', role: 'user' };
+		accountModalMode = 'add';
+	}
+
+	function openAccountEdit(u: AdminUser) {
+		accountForm = { id: u.id, name: u.name, email: u.email, password: '', role: u.role };
+		accountModalMode = 'edit';
+	}
+
+	function submitAccount() {
+		if (acting) return;
+		const form = { ...accountForm };
+		const mode = accountModalMode;
+		if (
+			mode === 'add' &&
+			(form.password.length < 8 || !/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password))
+		) {
+			error = 'Password minimal 8 karakter dan mengandung huruf serta angka.';
+			return;
+		}
+		void withAction(async () => {
+			if (mode === 'add') {
+				await adminService.createUser({
+					name: form.name,
+					email: form.email,
+					password: form.password,
+					role: form.role
+				});
+			} else {
+				await adminService.updateUser(form.id, { name: form.name, email: form.email });
+			}
+			accountModalMode = null;
+			await loadUsers();
+		}, mode === 'add' ? 'Akun berhasil dibuat.' : 'Akun berhasil diperbarui.');
+	}
+
+	function confirmDeleteUser() {
+		if (!deleteTarget || deletingUser) return;
+		const target = deleteTarget;
+		deletingUser = true;
+		void withAction(async () => {
+			await adminService.deleteUser(target.id);
+			deleteTarget = null;
+			await loadUsers();
+		}, `Akun ${target.name} berhasil dihapus.`).finally(() => (deletingUser = false));
 	}
 
 	// ---- Kategori actions ----
@@ -350,10 +419,10 @@
 	{:else if activeTab === 'users'}
 		<Card>
 			<form
-				class="mb-4 flex flex-wrap gap-2"
+				class="mb-4 flex flex-wrap items-center gap-2"
 				onsubmit={(e) => {
 					e.preventDefault();
-					void loadUsers();
+					void applyUserSearch();
 				}}
 			>
 				<input
@@ -362,7 +431,8 @@
 					bind:value={searchQuery}
 					class="min-w-52 flex-1 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
 				/>
-				<Button type="submit" variant="secondary">Cari</Button>
+				<Button type="submit" variant="secondary" loading={searchingUser}>Cari</Button>
+				<Button variant="primary" onclick={openAccountAdd}>+ Tambah Akun</Button>
 			</form>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
@@ -405,15 +475,19 @@
 									<div class="flex flex-wrap justify-end gap-1">
 										{#if isSelf}
 											<span class="px-2 text-xs text-slate-400 dark:text-metadark">—</span>
-										{:else if u.isBlocked}
-											<Button variant="secondary" onclick={() => unblock(u)}>Buka Blokir</Button>
 										{:else}
-											<Button variant="danger" onclick={() => openBlockModal(u)}>Blokir</Button>
-										{/if}
-										{#if !isSelf && u.role === 'admin'}
-											<Button variant="ghost" onclick={() => setRole(u, 'user')}>Cabut Admin</Button>
-										{:else if !isSelf}
-											<Button variant="ghost" onclick={() => setRole(u, 'admin')}>Jadikan Admin</Button>
+											{#if u.isBlocked}
+												<Button variant="secondary" onclick={() => unblock(u)}>Buka Blokir</Button>
+											{:else}
+												<Button variant="danger" onclick={() => openBlockModal(u)}>Blokir</Button>
+											{/if}
+											{#if u.role === 'admin'}
+												<Button variant="ghost" onclick={() => setRole(u, 'user')}>Cabut Admin</Button>
+											{:else}
+												<Button variant="ghost" onclick={() => setRole(u, 'admin')}>Jadikan Admin</Button>
+											{/if}
+											<Button variant="secondary" onclick={() => openAccountEdit(u)}>Edit</Button>
+											<Button variant="danger" disabled={acting} onclick={() => (deleteTarget = u)}>Hapus</Button>
 										{/if}
 									</div>
 								</td>
@@ -599,7 +673,7 @@
 			<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Pengguna yang diblokir tidak bisa login atau memakai API sampai blokir dibuka.</p>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (blockTarget = null)}>Batal</Button>
-				<Button type="submit" variant="danger" disabled={acting}>Blokir</Button>
+				<Button type="submit" variant="danger" loading={acting}>Blokir</Button>
 			</div>
 		</form>
 	</Modal>
@@ -641,7 +715,7 @@
 			</p>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (passwordTarget = null)}>Batal</Button>
-				<Button type="submit" disabled={acting}>Simpan Password</Button>
+				<Button type="submit" loading={acting}>Simpan Password</Button>
 			</div>
 		</form>
 	</Modal>
@@ -700,7 +774,7 @@
 			</label>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (categoryModalMode = null)}>Batal</Button>
-				<Button type="submit" disabled={acting}>Simpan</Button>
+				<Button type="submit" loading={acting}>Simpan</Button>
 			</div>
 		</form>
 	</Modal>
@@ -739,7 +813,7 @@
 			</label>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (walletModalMode = null)}>Batal</Button>
-				<Button type="submit" disabled={acting}>Simpan</Button>
+				<Button type="submit" loading={acting}>Simpan</Button>
 			</div>
 		</form>
 	</Modal>
@@ -829,8 +903,92 @@
 			</label>
 			<div class="flex justify-end gap-2">
 				<Button variant="ghost" onclick={() => (dompetModalMode = null)}>Batal</Button>
-				<Button type="submit" disabled={acting}>Simpan</Button>
+				<Button type="submit" loading={acting}>Simpan</Button>
 			</div>
 		</form>
+	</Modal>
+{/if}
+
+<!-- Modal tambah/edit akun -->
+{#if accountModalMode}
+	<Modal title={accountModalMode === 'add' ? 'Tambah Akun' : 'Edit Akun'} onclose={() => (accountModalMode = null)}>
+		<form
+			class="space-y-4"
+			onsubmit={(e) => {
+				e.preventDefault();
+				submitAccount();
+			}}
+		>
+			<label class="block">
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama</span>
+				<input
+					type="text"
+					required
+					minlength="2"
+					maxlength="150"
+					bind:value={accountForm.name}
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+				/>
+			</label>
+			<label class="block">
+				<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
+				<input
+					type="email"
+					required
+					bind:value={accountForm.email}
+					class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+				/>
+			</label>
+			{#if accountModalMode === 'add'}
+				<div class="grid grid-cols-2 gap-3">
+					<label class="block">
+						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
+						<input
+							type="password"
+							required
+							minlength="8"
+							autocomplete="new-password"
+							placeholder="Min. 8, huruf + angka"
+							bind:value={accountForm.password}
+							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+						/>
+					</label>
+					<label class="block">
+						<span class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Role</span>
+						<select
+							bind:value={accountForm.role}
+							class="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none"
+						>
+							<option value="user">User</option>
+							<option value="admin">Admin</option>
+						</select>
+					</label>
+				</div>
+			{/if}
+			{#if accountModalMode === 'add'}
+				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Akun baru otomatis mendapat dompet awal "Dompet Tunai".</p>
+			{:else}
+				<p class="text-sm text-slate-500 dark:text-slate-400 dark:text-metadark">Password dikelola lewat tombol "Ganti Password" pada tabel.</p>
+			{/if}
+			<div class="flex justify-end gap-2">
+				<Button variant="ghost" onclick={() => (accountModalMode = null)}>Batal</Button>
+				<Button type="submit" loading={acting}>Simpan</Button>
+			</div>
+		</form>
+	</Modal>
+{/if}
+
+<!-- Modal konfirmasi hapus akun -->
+{#if deleteTarget}
+	<Modal title="Hapus Akun {deleteTarget.name}" onclose={() => (deleteTarget = null)}>
+		<p class="text-sm text-slate-600 dark:text-slate-300">
+			Apakah Anda yakin akan menghapus akun
+			<strong class="font-semibold text-slate-900 dark:text-white">{deleteTarget.name} ({deleteTarget.email})</strong>?
+		</p>
+		<p class="mt-1 text-xs text-red-500">Seluruh data akun (transaksi, dompet, budget) akan ikut terhapus dan tidak dapat dibatalkan.</p>
+		<div class="mt-4 flex justify-end gap-2">
+			<Button variant="ghost" onclick={() => (deleteTarget = null)}>Batal</Button>
+			<Button variant="danger" loading={deletingUser} onclick={() => confirmDeleteUser()}>Hapus</Button>
+		</div>
 	</Modal>
 {/if}

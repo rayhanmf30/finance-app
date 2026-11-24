@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { db } from '#lib/server/db';
 import { requireAdmin } from '#lib/server/session';
+import { validateEmail } from '#lib/server/auth';
 import type { RequestHandler } from './$types';
 
 interface AdminUserRow {
@@ -19,6 +20,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		isBlocked?: boolean;
 		blockReason?: string;
 		role?: 'user' | 'admin';
+		name?: string;
+		email?: string;
 	} | null;
 	if (!body) throw error(400, 'Body harus JSON.');
 
@@ -41,16 +44,40 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		values.push(body.role);
 		fields.push(`role = $${values.length}`);
 	}
+	if (typeof body.name === 'string') {
+		const name = body.name.trim();
+		if (name.length < 2 || name.length > 150) {
+			throw error(400, 'Nama wajib diisi (2-150 karakter).');
+		}
+		values.push(name);
+		fields.push(`name = $${values.length}`);
+	}
+	if (typeof body.email === 'string') {
+		const email = body.email.trim().toLowerCase();
+		if (!validateEmail(email)) {
+			throw error(400, 'Format email tidak valid.');
+		}
+		values.push(email);
+		fields.push(`email = $${values.length}`);
+	}
 	if (fields.length === 0) throw error(400, 'Tidak ada perubahan yang dikirim.');
 
 	values.push(params.id);
-	const rows = await db.unsafe<AdminUserRow[]>(
-		`UPDATE users
-		 SET ${fields.join(', ')}
-		 WHERE id = $${values.length}
-		 RETURNING id, name, email, role, is_blocked, block_reason`,
-		values
-	);
+	let rows: AdminUserRow[];
+	try {
+		rows = await db.unsafe<AdminUserRow[]>(
+			`UPDATE users
+			 SET ${fields.join(', ')}
+			 WHERE id = $${values.length}
+			 RETURNING id, name, email, role, is_blocked, block_reason`,
+			values
+		);
+	} catch (err) {
+		if ((err as { code?: string }).code === '23505') {
+			throw error(409, 'Email sudah dipakai akun lain.');
+		}
+		throw err;
+	}
 	if (rows.length === 0) throw error(404, 'Akun tidak ditemukan.');
 
 	const u = rows[0];
@@ -62,4 +89,17 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		isBlocked: u.is_blocked,
 		blockReason: u.block_reason
 	});
+};
+
+export const DELETE: RequestHandler = async ({ locals, params }) => {
+	const adminId = requireAdmin(locals);
+
+	if (params.id === adminId) {
+		throw error(400, 'Tidak bisa menghapus akun sendiri.');
+	}
+
+	const rows = await db`DELETE FROM users WHERE id = ${params.id} RETURNING id`;
+	if (rows.length === 0) throw error(404, 'Akun tidak ditemukan.');
+
+	return new Response(null, { status: 204 });
 };

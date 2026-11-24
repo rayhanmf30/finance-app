@@ -26,24 +26,30 @@ npm run dev
 - Variabel env dideklarasikan di `src/env.ts` (Kit 3 explicit env) dan dibaca via `$app/env/private`.
 - Data demo (user seed) tidak memiliki password; buat akun sendiri lewat halaman **Daftar**.
 
+### Migrasi Skema
+
+File `server/migrations/` berisi migrasi Inkremental untuk database yang sudah berjalan (Supabase/Vercel). Terapkan manual via SQL editor Supabase atau `psql`:
+
+- `002_transaction_items_discount.sql` — kolom `discount DECIMAL(15,2) NOT NULL DEFAULT 0` pada tabel `transaction_items` (untuk diskon per barang hasil scan resi). Untuk database baru cukup jalankan `server/schema.sql` yang sudah termasuk kolom ini.
+
 ### API Endpoint
 
 | Endpoint | Metode | Fungsi |
 | --- | --- | --- |
 | `/api/wallets` | GET | Daftar dompet + saldo terkini |
 | `/api/categories` | GET | Kategori sistem + milik user |
-| `/api/transactions` | GET/POST | Riwayat per bulan (`?month=YYYY-MM&query=`) & simpan transaksi |
-| `/api/transactions/[id]` | PUT/DELETE | Ubah (re-create atomik) & hapus dengan pembalikan saldo |
+| `/api/transactions` | GET/POST | Riwayat per bulan (`?month=YYYY-MM&query=`) & simpan transaksi (termasuk rincian barang ke `transaction_items`) |
+| `/api/transactions/[id]` | GET/PUT/DELETE | Detail + rincian barang; ubah (re-create atomik, items lama dipertahankan bila tidak dikirim); hapus dengan pembalikan saldo |
 | `/api/dashboard/summary` | GET | Cashflow, breakdown kategori, total saldo, status budget |
 | `/api/budgets` | GET/POST | Status budget real-time & buat aturan budget |
-| `/api/receipts/parse` | POST | Ekstraksi struk (multipart field `receipt`) |
+| `/api/receipts/parse` | POST | Ekstraksi struk via AI Groq (multipart field `receipt`) — fallback mock bila `GROQ_API_KEY` kosong |
 | `/api/health` | GET | Cek konektivitas aplikasi + database (untuk verifikasi deployment) |
 | `/api/auth/register` | POST | Daftar akun baru (nama, email, password) — otomatis login + dompet awal |
 | `/api/auth/login` | POST | Masuk (email + password) → session cookie httpOnly 7 hari |
 | `/api/auth/logout` | POST | Keluar (hapus cookie session) |
 | `/api/auth/me` | GET | Profil user yang sedang login |
-| `/api/admin/users` | GET | (Admin) Daftar semua akun + statistik data, cari via `?query=` |
-| `/api/admin/users/[id]` | PATCH | (Admin) Blokir/buka blokir (dengan alasan) & ubah role |
+| `/api/admin/users` | GET/POST | (Admin) Daftar semua akun + statistik data (cari via `?query=`); tambah akun baru (password di-hash, dompet awal otomatis) |
+| `/api/admin/users/[id]` | PATCH/DELETE | (Admin) Blokir/buka blokir (dengan alasan), ubah role, edit nama/email; hapus akun (data terkait terhapus via CASCADE, akun sendiri tidak bisa dihapus) |
 | `/api/admin/categories` | GET/POST | (Admin) Semua kategori + pemakaian; buat kategori sistem |
 | `/api/admin/categories/[id]` | PATCH/DELETE | (Admin) Edit nama/warna & hapus kategori sistem (dijaga dari pemakaian) |
 | `/api/admin/wallet-types` | GET/POST | (Admin) Semua tipe dompet + jumlah pemakaian; buat tipe baru |
@@ -112,7 +118,7 @@ Akses `/admin` terbatas untuk user ber-role `admin`. Di sidebar, menu **Admin** 
 
 Kemampuan panel admin:
 
-- **Manajemen akun** — daftar semua akun (cari nama/email, statistik transaksi/dompet/budget), **blokir** akun dengan alasan (user terblokir tidak bisa login maupun memakai API — 403), buka blokir, jadikan/cabut role admin. Admin tidak bisa memblokir atau menurunkan dirinya sendiri (anti-lockout).
+- **Manajemen akun** — daftar semua akun (cari nama/email via tombol Cari, statistik transaksi/dompet/budget), **tambah akun** (nama, email, password di-hash, role — dompet awal "Dompet Tunai" dibuat otomatis), **edit akun** (nama/email; password diubah lewat "Ganti Password"), **hapus akun** dengan konfirmasi (seluruh data terkait ikut terhapus via CASCADE; akun sendiri tidak bisa dihapus), **blokir** akun dengan alasan (user terblokir tidak bisa login maupun memakai API — 403), buka blokir, jadikan/cabut role admin. Admin tidak bisa memblokir atau menurunkan dirinya sendiri (anti-lockout).
 - **Manajemen kategori** — lihat semua kategori (sistem + milik user) beserta jumlah pemakaian, tambah/edit **kategori sistem** (nama, tipe, warna, kategori induk), hapus kategori sistem (ditolak 409 bila masih dipakai transaksi, sub-kategori, budget, atau item transaksi).
 - **Manajemen tipe dompet** — tipe dompet kini dinamis di tabel `wallet_types` (awal: Tunai/Bank/E-Wallet/Kartu Kredit). Admin dapat menambah, mengubah label, mengaktifkan/menonaktifkan, serta menghapus tipe (ditolak 409 bila masih dipakai dompet). Kolom `wallets.type` kini FK ke `wallet_types(code)`. **Pemilih dompet** pada form transaksi otomatis mengelompokkan dompet per tipe (optgroup) memakai label terkini dari tabel `wallet_types` di admin.
 - **Manajemen dompet (tab Dompet)** — admin dapat melihat **seluruh tabel `wallets`** milik semua pengguna (pemilik, tipe, saldo, mata uang, jumlah transaksi), **membuat** dompet untuk pengguna mana pun (dengan saldo awal), **mengubah** nama/tipe/mata uang/penanda ikut-dihitung-total, dan **menghapus** dompet (ditolak 409 bila masih dipakai transaksi). Saldo berjalan tetap dikelola lewat transaksi agar selalu konsisten dengan riwayat.
@@ -166,11 +172,14 @@ Aplikasi dapat di-*install* ke home screen (Android/iOS/desktop):
 ## Fitur
 
 - **Dashboard:** Total saldo, pemasukan & pengeluaran bulan berjalan, grafik pengeluaran per kategori.
-- **Transaksi:** tambah/hapus transaksi (pemasukan/pengeluaran), filter bulan, pencarian kata kunci. Transaksi dapat **dilihat detail** (modal) dan **diedit** lewat modal edit (type TRANSFER hanya bisa dilihat, tidak diedit karena form belum mendukung dompet tujuan).
+- **Transaksi:** tambah/hapus transaksi (pemasukan/pengeluaran), filter bulan, pencarian kata kunci. Transaksi dapat **dilihat detail** (modal, termasuk tabel rincian barang) dan **diedit** lewat modal edit (type TRANSFER hanya bisa dilihat, tidak diedit karena form belum mendukung dompet tujuan). Penghapusan transaksi selalu lewat **dialog konfirmasi** yang menampilkan catatan transaksi.
+- **Standar pencarian:** di semua halaman, filter pencarian hanya diterapkan setelah tombol **Cari** ditekan (bukan live saat mengetik). Saat memuat/mencari, **tabel tidak dihilangkan** — hanya body (`tbody`) yang diganti skeleton, header tabel tetap tampil.
 - **Tambah Transaksi:** halaman khusus `/transactions/new` dengan form transaksi penuh, diakses lewat tombol "+ Tambah Transaksi" pada halaman transaksi.
-- **Scan Resi:** kini berupa **modal di halaman transaksi** (tombol "Scan Resi" di samping "Tambah Transaksi" — tidak lagi route terpisah). drag-and-drop gambar (jpg/png/webp, maks 5MB), kompresi sisi klien, ekstraksi terstruktur (merchant, tanggal, item, pajak/diskon, total), modal review dengan opsi simpan sebagai satu transaksi atau dipecah per item.
+- **Scan Resi:** berupa **modal di halaman transaksi** (tombol "Scan Resi" di samping "Tambah Transaksi" — tidak lagi route terpisah). drag-and-drop gambar (jpg/png/webp, maks 5MB), kompresi sisi klien, ekstraksi terstruktur via **AI Groq** (merchant, tanggal, item + harga/diskon, pajak/diskon, total). Hasil scan disimpan sebagai **satu transaksi lengkap dengan rincian barangnya** ke tabel `transaction_items` (nama, quantity, harga satuan, diskon) — ditampilkan pada modal detail transaksi.
 
-> Ekstraksi struk saat ini masih *mock* di sisi server (`src/lib/server/receipts.ts`) — struktur sudah siap diganti provider Vision/OCR nyata tanpa mengubah frontend.
+> Ekstraksi memakai model vision Groq (`https://api.groq.com/openai/v1/chat/completions`) secara server-side. Atur env `GROQ_API_KEY` dan opsional `GROQ_MODEL` (default `meta-llama/llama-4-scout-17b-16e-instruct`). Bila key kosong, server memakai data *mock* agar alur tetap bisa dicoba.
+
+- **Tombol proses dengan loading:** semua tombol yang memicu proses (simpan transaksi, simpan budget, cari, blokir, simpan password, dll.) menampilkan spinner dan tidak bisa diklik dua kali selama proses berjalan. Input form **tidak dikosongkan** sebelum proses berhasil (form tambah transaksi dikosongkan hanya setelah sukses).
 
 ## Develop
 

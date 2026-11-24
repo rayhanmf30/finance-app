@@ -37,8 +37,8 @@
 		onclose();
 	}
 
-	async function handleSave(inputs: Omit<TransactionInput, 'type'>[]) {
-		await receiptStore.save(inputs);
+	async function handleSave(input: Omit<TransactionInput, 'type'>) {
+		await receiptStore.save(input);
 		await transactionStore.refresh();
 		dashboardStore.refresh();
 		receiptStore.reset();

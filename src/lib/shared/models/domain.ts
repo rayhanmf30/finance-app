@@ -83,6 +83,8 @@ export interface Transaction {
 	amount: number;
 	transactionDate: string;
 	note: string;
+	/** Rincian barang (dari scan resi) — tersedia via GET /api/transactions/[id]. */
+	items?: ReceiptItemInput[];
 }
 
 export interface TransactionInput {
@@ -93,6 +95,16 @@ export interface TransactionInput {
 	amount: number;
 	transactionDate: string;
 	note?: string;
+	/** Rincian barang belanja (serta dari scan resi) — disimpan ke tabel transaction_items. */
+	items?: ReceiptItemInput[];
+}
+
+export interface ReceiptItemInput {
+	name: string;
+	quantity: number;
+	unitPrice: number;
+	/** Diskon harga per item (>= 0). */
+	discount?: number;
 }
 
 export interface TransactionFilter {
@@ -145,6 +157,10 @@ export interface ReceiptItem {
 	name: string;
 	quantity: number;
 	unitPrice: number;
+	/** Diskon per item (mis. potongan member) — hasil ekstraksi struk. */
+	discount: number;
+	/** Harga total item setelah diskon (quantity × unitPrice − discount). */
+	subtotal: number;
 }
 
 export interface ReceiptExtraction {
