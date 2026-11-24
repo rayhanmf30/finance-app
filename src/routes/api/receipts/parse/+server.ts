@@ -29,6 +29,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const buffer = Buffer.from(await file.arrayBuffer());
 	const dataUrl = `data:${file.type};base64,${buffer.toString('base64')}`;
 
-	const extraction = await parseReceipt(userId, dataUrl);
+	let extraction;
+	try {
+		extraction = await parseReceipt(userId, dataUrl);
+	} catch (err) {
+		// Teruskan detail error Groq (mis. 400 model decommissioned, 401 invalid key)
+		// agar pengguna/developer tahu akar masalahnya, bukan sekadar "Internal Error".
+		console.error('[api/receipts/parse]', err instanceof Error ? err.message : err);
+		throw error(502, err instanceof Error ? err.message : 'Gagal mengekstrak resi.');
+	}
 	return json(extraction);
 };

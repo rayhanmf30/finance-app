@@ -19,8 +19,11 @@ class ReceiptStore {
 			this.previewUrl = URL.createObjectURL(file);
 			this.extraction = await receiptParserService.parse(file);
 			this.status = 'reviewing';
-		} catch {
-			this.error = 'Gagal mengekstrak resi. Coba gambar lain.';
+		} catch (err) {
+			const detail = err instanceof Error ? err.message : '';
+			this.error = detail
+				? `Gagal mengekstrak resi — ${detail}. Periksa gambar atau konfigurasi GROQ_API_KEY, lalu coba lagi.`
+				: 'Gagal mengekstrak resi. Coba gambar lain.';
 			this.status = 'idle';
 		}
 	}
@@ -31,8 +34,9 @@ class ReceiptStore {
 		try {
 			await transactionService.create({ ...input, type: 'EXPENSE' });
 			this.status = 'saved';
-		} catch {
-			this.error = 'Gagal menyimpan transaksi.';
+		} catch (err) {
+			const detail = err instanceof Error ? err.message : '';
+			this.error = detail ? `Gagal menyimpan transaksi — ${detail}` : 'Gagal menyimpan transaksi.';
 			this.status = 'reviewing';
 		}
 	}
