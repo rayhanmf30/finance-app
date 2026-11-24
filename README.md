@@ -183,7 +183,7 @@ Aplikasi dapat di-*install* ke home screen (Android/iOS/desktop):
 
 - **Validasi saldo transfer:** saldo dompet **tidak boleh minus** akibat TRANSFER — server menolak (400 "Saldo dompet sumber tidak cukup untuk transfer ini.") saat membuat transfer yang melebihi saldo, maupun saat mengedit transfer (mis. menaikkan nominal atau membalik arah) yang membuat saldo proyeksi dompet sumber negatif.
 
-> Ekstraksi memakai model vision Groq (`https://api.groq.com/openai/v1/chat/completions`) secara server-side. Atur env `GROQ_API_KEY` dan opsional `GROQ_MODEL` (default `meta-llama/llama-4-scout-17b-16e-instruct`). Bila key kosong, server memakai data *mock* agar alur tetap bisa dicoba.
+> Ekstraksi memakai model vision Groq (`https://api.groq.com/openai/v1/chat/completions`) secara server-side. Atur env `GROQ_API_KEY` dan opsional `GROQ_MODEL` (default `qwen/qwen3.8-27b` — model vision Groq yang didukung; model lama llama-4-scout sudah dihentikan Groq). Bila key kosong, server memakai data *mock* agar alur tetap bisa dicoba.
 
 - **Tombol proses dengan loading:** semua tombol yang memicu proses (simpan transaksi, simpan budget, cari, blokir, simpan password, dll.) menampilkan spinner dan tidak bisa diklik dua kali selama proses berjalan. Input form **tidak dikosongkan** sebelum proses berhasil (form tambah transaksi dikosongkan hanya setelah sukses).
 

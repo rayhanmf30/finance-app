@@ -2,8 +2,13 @@ import { db } from './db';
 import type { ReceiptExtraction } from '#lib/shared/models/domain';
 import { GROQ_API_KEY, GROQ_MODEL } from '$app/env/private';
 
-/** Default model vision Groq yang mendukung input gambar. */
-const DEFAULT_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+/**
+ * Default model vision Groq yang mendukung input gambar + JSON mode.
+ * Model lama (meta-llama/llama-4-scout-17b-16e-instruct) sudah dihentikan (decommissioned)
+ * oleh Groq sehingga ekstraksi selalu gagal 400 model_not_found/decommissioned.
+ * https://console.groq.com/docs/vision
+ */
+const DEFAULT_MODEL = 'qwen/qwen3.8-27b';
 
 const PROMPT = `Anda adalah asisten keuangan yang ahli membaca foto struk belanja (receipt).
 Ekstrak SEMUA data pada struk ini dan balas HANYA dengan satu objek JSON valid tanpa teks lain:
@@ -60,28 +65,44 @@ async function extractWithGroq(imageDataUrl: string): Promise<Omit<ReceiptExtrac
 		throw new Error('GROQ_API_KEY belum diset.');
 	}
 
-	const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-		method: 'POST',
-		headers: {
-			authorization: `Bearer ${apiKey}`,
-			'content-type': 'application/json'
-		},
-		body: JSON.stringify({
-			model: GROQ_MODEL || DEFAULT_MODEL,
-			temperature: 0,
-			max_tokens: 2048,
-			response_format: { type: 'json_object' },
-			messages: [
-				{
-					role: 'user',
-					content: [
-						{ type: 'text', text: PROMPT },
-						{ type: 'image_url', image_url: { url: imageDataUrl } }
-					]
-				}
-			]
-		})
-	});
+	const send = async (model: string) =>
+		await fetch('https://api.groq.com/openai/v1/chat/completions', {
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${apiKey}`,
+				'content-type': 'application/json'
+			},
+			body: JSON.stringify({
+				model,
+				temperature: 0,
+				max_completion_tokens: 2048,
+				response_format: { type: 'json_object' },
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', text: PROMPT },
+							{ type: 'image_url', image_url: { url: imageDataUrl } }
+						]
+					}
+				]
+			})
+		});
+
+	// Fallback: bila GROQ_MODEL env masih memuat model lama yang sudah
+	// dihentikan Groq (mis. llama-4-scout), coba sekali lagi dengan model default.
+	const configured = GROQ_MODEL || DEFAULT_MODEL;
+	let res = await send(configured);
+	if (!res.ok) {
+		const detail = await res.text().catch(() => '');
+		const modelRelated = /decommissioned|model_not_found|does not exist|invalid model|not supported/i.test(detail);
+		if (res.status === 400 && modelRelated && configured !== DEFAULT_MODEL) {
+			console.error(`[receipts] Model "${configured}" ditolak Groq, mencoba fallback "${DEFAULT_MODEL}".`);
+			res = await send(DEFAULT_MODEL);
+		} else {
+			throw new Error(`Groq API ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ''}`);
+		}
+	}
 
 	if (!res.ok) {
 		const detail = await res.text().catch(() => '');
@@ -149,6 +170,7 @@ export async function parseReceipt(userId: string, imageDataUrl?: string): Promi
 		const extraction = await extractWithGroq(imageDataUrl);
 		return { ...extraction, suggestedCategoryId: suggested?.id ?? null };
 	} catch (err) {
+		console.error('[receipts] Ekstraksi Groq gagal:', err instanceof Error ? err.message : err);
 		throw err;
 	}
 }

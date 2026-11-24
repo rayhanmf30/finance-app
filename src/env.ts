@@ -32,7 +32,7 @@ export const variables = defineEnvVars({
 	GROQ_API_KEY: {
 		schema: (value) => value
 	},
-	/** Model vision Groq, default meta-llama/llama-4-scout-17b-16e-instruct. */
+	/** Model vision Groq, default qwen/qwen3.8-27b (model lama llama-4-scout sudah dihentikan Groq). */
 	GROQ_MODEL: {
 		schema: (value) => value
 	}
