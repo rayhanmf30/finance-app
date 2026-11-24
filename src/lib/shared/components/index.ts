@@ -1,3 +1,8 @@
 export { default as Button } from './Button.svelte';
 export { default as Card } from './Card.svelte';
 export { default as Modal } from './Modal.svelte';
+export { default as Icon } from './Icon.svelte';
+export { default as IconButton } from './IconButton.svelte';
+export { default as ActionMenu } from './ActionMenu.svelte';
+export { default as ConfirmModal } from './ConfirmModal.svelte';
+export type { IconName } from './icon-paths';

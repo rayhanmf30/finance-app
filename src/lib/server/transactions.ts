@@ -50,31 +50,31 @@ export function mapTransaction(row: TransactionRow) {
 
 function validateInput(input: CreateTransactionInput): void {
 	if (!['INCOME', 'EXPENSE', 'TRANSFER'].includes(input.type)) {
-		error(400, 'Tipe transaksi tidak valid.');
+		error(400, { message: 'Tipe transaksi tidak valid.', code: 'E_INVALID_TYPE' });
 	}
 
 	const amount = Number(input.amount);
 	if (!Number.isFinite(amount) || amount <= 0) {
-		error(400, 'Nominal harus lebih besar dari nol.');
+		error(400, { message: 'Nominal harus lebih besar dari nol.', code: 'E_INVALID_AMOUNT' });
 	}
 
 	const date = new Date(input.transactionDate);
 	if (Number.isNaN(date.getTime())) {
-		error(400, 'Tanggal transaksi tidak valid.');
+		error(400, { message: 'Tanggal transaksi tidak valid.', code: 'E_INVALID_DATE' });
 	}
 
 	if (input.type === 'TRANSFER') {
 		if (!input.destinationWalletId) {
-			error(400, 'Transfer wajib memiliki dompet tujuan.');
+			error(400, { message: 'Transfer wajib memiliki dompet tujuan.', code: 'E_TRANSFER_NEEDS_DEST' });
 		}
 		if (input.destinationWalletId === input.walletId) {
-			error(400, 'Dompet tujuan tidak boleh sama dengan dompet sumber.');
+			error(400, { message: 'Dompet tujuan tidak boleh sama dengan dompet sumber.', code: 'E_TRANSFER_SAME_WALLET' });
 		}
 	}
 
 	if (input.items) {
 		if (input.items.length > 500) {
-			error(400, 'Maksimal 500 item per transaksi.');
+			error(400, { message: 'Maksimal 500 item per transaksi.', code: 'E_TOO_MANY_ITEMS' });
 		}
 		input.items.forEach((item, index) => {
 			const label = `Item #${index + 1}`;
@@ -99,7 +99,7 @@ function validateInput(input: CreateTransactionInput): void {
 
 export async function listTransactions(userId: string, month: string, query: string) {
 	const [year, monthIndex] = month.split('-').map(Number);
-	if (!year || !monthIndex) error(400, 'Format bulan harus YYYY-MM.');
+	if (!year || !monthIndex) error(400, { message: 'Format bulan harus YYYY-MM.', code: 'E_BAD_MONTH' });
 
 	const start = new Date(year, monthIndex - 1, 1);
 	const end = new Date(year, monthIndex, 1);
@@ -141,14 +141,14 @@ export async function createTransaction(userId: string, input: CreateTransaction
 			FOR UPDATE
 		`;
 		if (locked.length !== walletIds.length) {
-			error(400, 'Dompet tidak ditemukan.');
+			error(400, { message: 'Dompet tidak ditemukan.', code: 'E_WALLET_NOT_FOUND' });
 		}
 
 		// Saldo dompet sumber tidak boleh minus akibat transfer.
 		if (input.type === 'TRANSFER') {
 			const source = locked.find((w) => w.id === input.walletId)!;
 			if (Number(source.current_balance) < amount) {
-				error(400, 'Saldo dompet sumber tidak cukup untuk transfer ini.');
+				error(400, { message: 'Saldo dompet sumber tidak cukup untuk transfer ini.', code: 'E_INSUFFICIENT_BALANCE' });
 			}
 		}
 
@@ -210,7 +210,7 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 			WHERE id = ${id} AND user_id = ${userId}
 			FOR UPDATE
 		`;
-		if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+		if (rows.length === 0) error(404, { message: 'Transaksi tidak ditemukan.', code: 'E_TX_NOT_FOUND' });
 		const old = rows[0];
 		const oldAmount = Number(old.amount);
 
@@ -232,7 +232,7 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 			FOR UPDATE
 		`;
 		if (locked.length !== involved.length) {
-			error(400, 'Dompet tidak ditemukan.');
+			error(400, { message: 'Dompet tidak ditemukan.', code: 'E_WALLET_NOT_FOUND' });
 		}
 
 		// Rekonsiliasi saldo: kumpulkan delta per dompet (kunci gabungan lama + baru,
@@ -268,7 +268,7 @@ export async function updateTransaction(userId: string, id: string, input: Creat
 			const projected =
 				Number(source.current_balance) + (deltas.get(input.walletId) ?? 0);
 			if (projected < 0) {
-				error(400, 'Saldo dompet sumber tidak cukup untuk transfer ini.');
+				error(400, { message: 'Saldo dompet sumber tidak cukup untuk transfer ini.', code: 'E_INSUFFICIENT_BALANCE' });
 			}
 		}
 
@@ -326,7 +326,7 @@ export async function getTransaction(userId: string, id: string) {
 		FROM transactions
 		WHERE id = ${id}::uuid AND user_id = ${userId}
 	`;
-	if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+	if (rows.length === 0) error(404, { message: 'Transaksi tidak ditemukan.', code: 'E_TX_NOT_FOUND' });
 	const items = await listTransactionItems(userId, id);
 	return { ...mapTransaction(rows[0]), items };
 }
@@ -355,7 +355,7 @@ export async function deleteTransaction(userId: string, id: string) {
 			WHERE id = ${id} AND user_id = ${userId}
 			FOR UPDATE
 		`;
-		if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+		if (rows.length === 0) error(404, { message: 'Transaksi tidak ditemukan.', code: 'E_TX_NOT_FOUND' });
 
 		const row = rows[0];
 		const amount = Number(row.amount);
@@ -375,17 +375,20 @@ export async function deleteTransaction(userId: string, id: string) {
 
 interface BudgetRecord {
 	id: string;
-	category_id: string | null;
 	period_type: PeriodType;
 	limit_amount: string;
 	warning_threshold_pct: number;
-	category_name: string | null;
+	/** ID kategori milik budget (tabel budget_categories); kosong = budget global. */
+	category_ids: string[] | null;
+	/** Nama kategori milik budget (sejajar category_ids); kosong = budget global. */
+	category_names: string[] | null;
 }
 
 export interface BudgetStatusRow {
 	budgetId: string;
-	categoryId: string | null;
-	categoryName: string;
+	/** Kategori yang dicakup budget; kosong = global (semua pengeluaran). */
+	categoryIds: string[];
+	categoryNames: string[];
 	periodType: PeriodType;
 	periodKey: string;
 	limitAmount: number;
@@ -404,8 +407,8 @@ export function mapBudgetStatus(budget: BudgetRecord, spent: number, key: string
 
 	return {
 		budgetId: budget.id,
-		categoryId: budget.category_id,
-		categoryName: budget.category_name ?? 'Total Semua Pengeluaran',
+		categoryIds: budget.category_ids ?? [],
+		categoryNames: budget.category_names ?? [],
 		periodType: budget.period_type,
 		periodKey: key,
 		limitAmount: limit,
@@ -422,10 +425,14 @@ export async function computeBudgetStatuses(
 	at: Date = new Date()
 ): Promise<BudgetStatusRow[]> {
 	const budgets = await executor<BudgetRecord[]>`
-		SELECT b.id, b.category_id, b.period_type, b.limit_amount, b.warning_threshold_pct, c.name AS category_name
+		SELECT b.id, b.period_type, b.limit_amount, b.warning_threshold_pct,
+			COALESCE(json_agg(c.id ORDER BY c.name) FILTER (WHERE c.id IS NOT NULL), '[]') AS category_ids,
+			COALESCE(json_agg(c.name ORDER BY c.name) FILTER (WHERE c.id IS NOT NULL), '[]') AS category_names
 		FROM budgets b
-		LEFT JOIN categories c ON c.id = b.category_id
+		LEFT JOIN budget_categories bc ON bc.budget_id = b.id
+		LEFT JOIN categories c ON c.id = bc.category_id
 		WHERE b.user_id = ${userId} AND b.is_active = TRUE
+		GROUP BY b.id
 		ORDER BY b.created_at
 	`;
 
@@ -433,7 +440,7 @@ export async function computeBudgetStatuses(
 	for (const budget of budgets) {
 		const { start, end } = periodRange(at, budget.period_type);
 		const key = periodKey(at, budget.period_type);
-		const spent = await sumExpenses(executor, userId, budget.category_id, start, end);
+		const spent = await sumExpenses(executor, userId, budget.category_ids ?? [], start, end);
 		statuses.push(mapBudgetStatus(budget, spent, key));
 	}
 	return statuses;
@@ -442,26 +449,12 @@ export async function computeBudgetStatuses(
 async function sumExpenses(
 	executor: SqlExecutor,
 	userId: string,
-	categoryId: string | null,
+	categoryIds: string[],
 	start: Date,
 	end: Date
 ): Promise<number> {
-	const rows = categoryId
-		? await executor<{ total: string }[]>`
-			WITH RECURSIVE subtree AS (
-				SELECT id FROM categories WHERE id = ${categoryId}
-				UNION ALL
-				SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
-			)
-			SELECT COALESCE(SUM(t.amount), 0) AS total
-			FROM transactions t
-			WHERE t.user_id = ${userId}
-				AND t.type = 'EXPENSE'
-				AND t.category_id IN (SELECT id FROM subtree)
-				AND t.transaction_date >= ${start}
-				AND t.transaction_date < ${end}
-		`
-		: await executor<{ total: string }[]>`
+	if (categoryIds.length === 0) {
+		const rows = await executor<{ total: string }[]>`
 			SELECT COALESCE(SUM(t.amount), 0) AS total
 			FROM transactions t
 			WHERE t.user_id = ${userId}
@@ -469,6 +462,23 @@ async function sumExpenses(
 				AND t.transaction_date >= ${start}
 				AND t.transaction_date < ${end}
 		`;
+		return Number(rows[0].total);
+	}
+	// Jumlahkan pengeluaran pada gabungan subtree SEMUA kategori terpilih.
+	const rows = await executor<{ total: string }[]>`
+		WITH RECURSIVE subtree AS (
+			SELECT id FROM categories WHERE id IN ${categoryIds}
+			UNION ALL
+			SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
+		)
+		SELECT COALESCE(SUM(t.amount), 0) AS total
+		FROM transactions t
+		WHERE t.user_id = ${userId}
+			AND t.type = 'EXPENSE'
+			AND t.category_id IN (SELECT id FROM subtree)
+			AND t.transaction_date >= ${start}
+			AND t.transaction_date < ${end}
+	`;
 	return Number(rows[0].total);
 }
 
@@ -478,24 +488,48 @@ async function evaluateBudgets(
 	categoryId: string | null,
 	date: Date
 ): Promise<void> {
-	const budgets = await tx<BudgetRecord[]>`
-		WITH RECURSIVE chain AS (
-			SELECT id, parent_id FROM categories WHERE id = ${categoryId}
-			UNION ALL
-			SELECT c.id, c.parent_id FROM categories c JOIN chain ch ON c.id = ch.parent_id
-		)
-		SELECT b.id, b.category_id, b.period_type, b.limit_amount, b.warning_threshold_pct, c.name AS category_name
-		FROM budgets b
-		LEFT JOIN categories c ON c.id = b.category_id
-		WHERE b.user_id = ${userId}
-			AND b.is_active = TRUE
-			AND (b.category_id IS NULL OR b.category_id IN (SELECT id FROM chain))
-	`;
+	const hasCategory = categoryId !== null && categoryId !== '';
+	const budgets = hasCategory
+		? await tx<BudgetRecord[]>`
+			WITH RECURSIVE chain AS (
+				SELECT id, parent_id FROM categories WHERE id = ${categoryId}
+				UNION ALL
+				SELECT c.id, c.parent_id FROM categories c JOIN chain ch ON c.id = ch.parent_id
+			)
+			SELECT b.id, b.period_type, b.limit_amount, b.warning_threshold_pct,
+				COALESCE(json_agg(c.id ORDER BY c.name) FILTER (WHERE c.id IS NOT NULL), '[]') AS category_ids,
+				COALESCE(json_agg(c.name ORDER BY c.name) FILTER (WHERE c.id IS NOT NULL), '[]') AS category_names
+			FROM budgets b
+			LEFT JOIN budget_categories bc ON bc.budget_id = b.id
+			LEFT JOIN categories c ON c.id = bc.category_id
+			WHERE b.user_id = ${userId}
+				AND b.is_active = TRUE
+				AND (
+					NOT EXISTS (SELECT 1 FROM budget_categories bcm_all WHERE bcm_all.budget_id = b.id)
+					OR EXISTS (
+						SELECT 1 FROM budget_categories bcm
+						WHERE bcm.budget_id = b.id AND bcm.category_id IN (SELECT id FROM chain)
+					)
+				)
+			GROUP BY b.id
+			`
+		: await tx<BudgetRecord[]>`
+			SELECT b.id, b.period_type, b.limit_amount, b.warning_threshold_pct,
+				COALESCE(json_agg(c.id ORDER BY c.name) FILTER (WHERE c.id IS NOT NULL), '[]') AS category_ids,
+				COALESCE(json_agg(c.name ORDER BY c.name) FILTER (WHERE c.id IS NOT NULL), '[]') AS category_names
+			FROM budgets b
+			LEFT JOIN budget_categories bc ON bc.budget_id = b.id
+			LEFT JOIN categories c ON c.id = bc.category_id
+			WHERE b.user_id = ${userId}
+				AND b.is_active = TRUE
+				AND NOT EXISTS (SELECT 1 FROM budget_categories bcm_all WHERE bcm_all.budget_id = b.id)
+			GROUP BY b.id
+		`;
 
 	for (const budget of budgets) {
 		const { start, end } = periodRange(date, budget.period_type);
 		const key = periodKey(date, budget.period_type);
-		const spent = await sumExpenses(tx, userId, budget.category_id, start, end);
+		const spent = await sumExpenses(tx, userId, budget.category_ids ?? [], start, end);
 		const limit = Number(budget.limit_amount);
 		const percentage = limit > 0 ? (spent / limit) * 100 : 0;
 
@@ -507,7 +541,8 @@ async function evaluateBudgets(
 		}
 		if (!level) continue;
 
-		const label = budget.category_name ?? 'Total Semua Pengeluaran';
+		const names = budget.category_names ?? [];
+		const label = names.length > 0 ? names.join(', ') : 'Total Semua Pengeluaran';
 		const message =
 			level === 'EXCEEDED_LIMIT'
 				? `Budget ${label} sudah terlampaui: terpakai ${spent.toLocaleString('id-ID')} dari limit ${limit.toLocaleString('id-ID')}.`

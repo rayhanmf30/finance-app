@@ -34,9 +34,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		extraction = await parseReceipt(userId, dataUrl);
 	} catch (err) {
 		// Teruskan detail error Groq (mis. 400 model decommissioned, 401 invalid key)
-		// agar pengguna/developer tahu akar masalahnya, bukan sekadar "Internal Error".
-		console.error('[api/receipts/parse]', err instanceof Error ? err.message : err);
-		throw error(502, err instanceof Error ? err.message : 'Gagal mengekstrak resi.');
+		// beserta code-nya (mis. E_RECEIPT_UNREADABLE) agar UI bisa menerjemahkan.
+		const message = err instanceof Error ? err.message : 'Gagal mengekstrak resi.';
+		const code = err && typeof err === 'object' ? (err as { code?: string }).code : undefined;
+		console.error('[api/receipts/parse]', message);
+		throw error(502, { message, code });
 	}
 	return json(extraction);
 };

@@ -17,10 +17,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		WHERE email = ${email}
 	`;
 	if (rows.length === 0 || !rows[0].password_hash || !verifyPassword(password, rows[0].password_hash)) {
-		throw error(401, 'Email atau password salah.');
+		throw error(401, { message: 'Email atau password salah.', code: 'E_INVALID_CREDENTIALS' });
 	}
 	if (rows[0].is_blocked) {
-		throw error(403, rows[0].block_reason || 'Akun Anda diblokir oleh admin.');
+		throw error(403, { message: rows[0].block_reason || 'Akun Anda diblokir oleh admin.', code: 'E_BLOCKED' });
 	}
 
 	const user = rows[0];

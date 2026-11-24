@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Wallet } from '#lib/shared/models/domain';
 	import { walletTypeLabel } from '#lib/core/auth/auth.service.svelte';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 
 	interface Props {
 		label?: string;
@@ -8,7 +9,7 @@
 		value: string;
 	}
 
-	let { label = 'Dompet', wallets, value = $bindable('') }: Props = $props();
+	let { label = i18n.t('tx.labelWallet'), wallets, value = $bindable('') }: Props = $props();
 
 	// Kelompokkan dompet berdasarkan tipe (dinamis dari wallet_types).
 	const groups = $derived.by(() => {

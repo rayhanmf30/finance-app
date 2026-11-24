@@ -5,12 +5,15 @@
 	import '../app.css';
 	import { authService } from '#lib/core/auth/auth.service.svelte';
 	import { themeService } from '#lib/core/theme/theme.service.svelte';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
+	import Icon from '#lib/shared/components/Icon.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
 	onMount(() => {
 		authService.load();
 		themeService.init();
+		i18n.init();
 		if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 			navigator.serviceWorker.register('/sw.js');
 		}
@@ -42,22 +45,22 @@
 
 	interface NavLink {
 		href: string;
-		label: string;
+		labelKey: string;
 		icon: 'dashboard' | 'transactions' | 'admin';
 	}
 
 	const links: NavLink[] = [
-		{ href: '/', label: 'Dashboard', icon: 'dashboard' },
-		{ href: '/transactions', label: 'Transaksi', icon: 'transactions' }
+		{ href: '/', labelKey: 'nav.dashboard', icon: 'dashboard' },
+		{ href: '/transactions', labelKey: 'nav.transactions', icon: 'transactions' }
 	];
 
 	const navLinks = $derived<NavLink[]>(links);
 
-	const adminTabs: { id: string; label: string }[] = [
-		{ id: 'users', label: 'Akun' },
-		{ id: 'categories', label: 'Kategori' },
-		{ id: 'walletTypes', label: 'Tipe Dompet' },
-		{ id: 'wallets', label: 'Dompet' }
+	const adminTabs: { id: string; labelKey: string }[] = [
+		{ id: 'users', labelKey: 'admin.tab.users' },
+		{ id: 'categories', labelKey: 'admin.tab.categories' },
+		{ id: 'walletTypes', labelKey: 'admin.tab.walletTypes' },
+		{ id: 'wallets', labelKey: 'admin.tab.wallets' }
 	];
 
 	const currentTab = $derived(
@@ -69,9 +72,7 @@
 	const active = (href: string) =>
 		href === '/'
 			? page.url.pathname === '/'
-			: href === '/transactions'
-				? page.url.pathname === '/transactions'
-				: page.url.pathname.startsWith(href);
+			: page.url.pathname.startsWith(href);
 
 	const initialValues: Record<NavLink['icon'], string> = {
 		dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
@@ -81,10 +82,13 @@
 
 	let adminOpen = $state(true);
 
+	const activeNavLink = $derived(navLinks.find((l) => active(l.href)));
 	const pageTitle = $derived(
 		isAdminPage
-			? `Admin — ${adminTabs.find((t) => t.id === currentTab)?.label ?? 'Akun'}`
-			: navLinks.find((l) => active(l.href))?.label ?? ''
+			? `${i18n.t('nav.admin')} — ${i18n.t(adminTabs.find((t) => t.id === currentTab)?.labelKey ?? 'admin.tab.users')}`
+			: activeNavLink
+				? i18n.t(activeNavLink.labelKey)
+				: ''
 	);
 </script>
 
@@ -104,7 +108,7 @@
 			{#if sidebarOpen}
 				<button
 					type="button"
-					aria-label="Tutup menu"
+					aria-label={i18n.t('nav.closeMenu')}
 					class="fixed inset-0 z-30 cursor-pointer bg-black/50 lg:hidden"
 					onclick={() => (sidebarOpen = false)}
 				></button>
@@ -127,7 +131,7 @@
 
 				<!-- Menu -->
 				<nav class="flex-1 space-y-2 overflow-y-auto px-4 py-6">
-					<p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-metadark">MENU</p>
+					<p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-metadark">{i18n.t('nav.menu')}</p>
 					{#each navLinks as link (link.href)}
 						<a
 							href={link.href}
@@ -139,7 +143,7 @@
 							<svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
 								<path stroke-linecap="round" stroke-linejoin="round" d={initialValues[link.icon]} />
 							</svg>
-							{link.label}
+							{i18n.t(link.labelKey)}
 						</a>
 					{/each}
 
@@ -159,7 +163,7 @@
 								<svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
 									<path stroke-linecap="round" stroke-linejoin="round" d={initialValues.admin} />
 								</svg>
-								<span class="flex-1 text-left">Admin</span>
+								<span class="flex-1 text-left">{i18n.t('nav.admin')}</span>
 								<svg
 									class="h-4 w-4 transition-transform {adminOpen ? 'rotate-90' : ''}"
 									fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
@@ -178,7 +182,7 @@
 												? 'bg-indigo-50 font-semibold text-indigo-700 dark:bg-boxdark-2 dark:text-white'
 												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:text-metadark dark:hover:bg-boxdark-2 dark:hover:text-white'}"
 										>
-											{tab.label}
+											{i18n.t(tab.labelKey)}
 										</a>
 									{/each}
 								</div>
@@ -200,13 +204,12 @@
 					</div>
 					<button
 						type="button"
+						aria-label={i18n.t('nav.logout')}
+						title={i18n.t('nav.logout')}
 						onclick={handleLogout}
 						class="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-metadark dark:hover:bg-red-500/10 dark:hover:text-red-400"
 					>
-						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-						</svg>
-						Keluar
+						<Icon name="logout" class="h-4 w-4" />
 					</button>
 				</div>
 			</aside>
@@ -222,7 +225,7 @@
 						<!-- Hamburger (mobile) -->
 						<button
 							type="button"
-							aria-label="Buka menu"
+							aria-label={i18n.t('nav.openMenu')}
 							class="cursor-pointer rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-metadark dark:hover:bg-boxdark lg:hidden"
 							onclick={() => (sidebarOpen = true)}
 						>
@@ -233,25 +236,29 @@
 						<h1 class="text-base font-semibold text-slate-900 dark:text-white">{pageTitle}</h1>
 					</div>
 
-					<!-- Toggle tema -->
-					<button
-						type="button"
-						aria-label={themeService.current === 'dark' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
-						class="cursor-pointer rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-metadark dark:hover:bg-boxdark dark:hover:text-white"
-						onclick={() => themeService.toggle()}
-					>
-						{#if themeService.current === 'dark'}
-							<!-- ikon matahari -->
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 10.728a1 1 0 01-1.414 0M6.343 17.657l-.707.707m12.728-12.728a1 1 0 010 1.414M12 8a4 4 0 100 8 4 4 0 000-8z" />
-							</svg>
-						{:else}
-							<!-- ikon bulan -->
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-							</svg>
-						{/if}
-					</button>
+					<div class="flex items-center gap-2">
+						<!-- Toggle bahasa (id ⇄ en) -->
+						<button
+							type="button"
+							aria-label={i18n.locale === 'id' ? i18n.t('nav.toEnglish') : i18n.t('nav.toIndonesian')}
+							title={i18n.locale === 'id' ? i18n.t('nav.toEnglish') : i18n.t('nav.toIndonesian')}
+							class="cursor-pointer rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-metadark dark:hover:bg-boxdark dark:hover:text-white"
+							onclick={() => i18n.toggle()}
+						>
+							<Icon name="globe" class="h-5 w-5" />
+						</button>
+
+						<!-- Toggle tema -->
+						<button
+							type="button"
+							aria-label={themeService.current === 'dark' ? i18n.t('nav.toLight') : i18n.t('nav.toDark')}
+							title={themeService.current === 'dark' ? i18n.t('nav.toLight') : i18n.t('nav.toDark')}
+							class="cursor-pointer rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-metadark dark:hover:bg-boxdark dark:hover:text-white"
+							onclick={() => themeService.toggle()}
+						>
+							<Icon name={themeService.current === 'dark' ? 'sun' : 'moon'} class="h-5 w-5" />
+						</button>
+					</div>
 				</header>
 
 				<main
@@ -262,13 +269,13 @@
 				</main>
 
 				<footer class="border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400 dark:border-slate-700/60 dark:text-metadark">
-					FinanceApp — pencatatan arus kas harian
+					{i18n.t('nav.footer')}
 				</footer>
 			</div>
 		</div>
 	{/if}
 {:else}
 	<div class="flex min-h-screen items-center justify-center">
-		<p class="animate-pulse text-sm text-slate-400 dark:text-metadark">Memuat…</p>
+		<p class="animate-pulse text-sm text-slate-400 dark:text-metadark">{i18n.t('common.loading')}</p>
 	</div>
 {/if}

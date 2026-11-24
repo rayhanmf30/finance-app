@@ -43,8 +43,11 @@ export const adminService = {
 	},
 
 	// ---- Categories ----
-	async listCategories(): Promise<AdminCategory[]> {
-		return httpClient.get<AdminCategory[]>('/api/admin/categories');
+	async listCategories(query = ''): Promise<AdminCategory[]> {
+		const search = query.trim();
+		return httpClient.get<AdminCategory[]>(
+			`/api/admin/categories${search ? `?q=${encodeURIComponent(search)}` : ''}`
+		);
 	},
 	async createCategory(body: CategoryInput): Promise<{ id: string }> {
 		return httpClient.post<{ id: string }>('/api/admin/categories', body);
@@ -57,8 +60,11 @@ export const adminService = {
 	},
 
 	// ---- Wallet types ----
-	async listWalletTypes(): Promise<WalletTypeInfo[]> {
-		return httpClient.get<WalletTypeInfo[]>('/api/admin/wallet-types');
+	async listWalletTypes(query = ''): Promise<WalletTypeInfo[]> {
+		const search = query.trim();
+		return httpClient.get<WalletTypeInfo[]>(
+			`/api/admin/wallet-types${search ? `?q=${encodeURIComponent(search)}` : ''}`
+		);
 	},
 	async createWalletType(code: string, label: string): Promise<void> {
 		await httpClient.post('/api/admin/wallet-types', { code, label });
@@ -71,8 +77,11 @@ export const adminService = {
 	},
 
 	// ---- Wallets (dompet milik pengguna) ----
-	async listWallets(): Promise<AdminWallet[]> {
-		return httpClient.get<AdminWallet[]>('/api/admin/wallets');
+	async listWallets(query = ''): Promise<AdminWallet[]> {
+		const search = query.trim();
+		return httpClient.get<AdminWallet[]>(
+			`/api/admin/wallets${search ? `?q=${encodeURIComponent(search)}` : ''}`
+		);
 	},
 	async createWallet(body: {
 		userId: string;

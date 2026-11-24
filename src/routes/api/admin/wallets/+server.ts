@@ -18,8 +18,11 @@ interface AdminWalletRow {
 	created_at: Date;
 }
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	requireAdmin(locals);
+
+	const query = (url.searchParams.get('q') ?? '').trim();
+	const pattern = `%${query}%`;
 
 	const rows = await db<AdminWalletRow[]>`
 		SELECT w.id, w.user_id AS owner_id, u.name AS owner_name, u.email AS owner_email,
@@ -30,6 +33,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 		FROM wallets w
 		JOIN users u ON u.id = w.user_id
 		LEFT JOIN wallet_types wt ON wt.code = w.type
+		WHERE ${query} = ''
+			OR w.name ILIKE ${pattern}
+			OR u.name ILIKE ${pattern}
+			OR u.email ILIKE ${pattern}
+			OR COALESCE(wt.label, '') ILIKE ${pattern}
 		ORDER BY u.name, u.email, w.created_at
 	`;
 

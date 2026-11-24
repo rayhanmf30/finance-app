@@ -8,6 +8,12 @@ export class HttpError extends Error {
 	}
 }
 
+interface ErrorBody {
+	message: string;
+	/** Kode error opsional dari server (mis. E_UNAUTHORIZED) untuk i18n. */
+	code?: string;
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
 	const isFormData = init?.body instanceof FormData;
 	const response = await fetch(url, {
@@ -24,12 +30,18 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 	if (!response.ok) {
 		let message = await response.text();
+		let code: string | undefined;
 		try {
-			message = JSON.parse(message).message ?? message;
+			const parsed = JSON.parse(message) as ErrorBody;
+			if (parsed?.message) message = parsed.message;
+			code = parsed?.code;
 		} catch {
 			// keep raw body
 		}
-		throw new HttpError(response.status, message);
+		const error = new HttpError(response.status, message);
+		// Properti `code` mengikuti error agar UI bisa memakai i18n (<i18n.displayError(err)>).
+		Object.defineProperty(error, 'code', { value: code, enumerable: true });
+		throw error;
 	}
 
 	return (await response.json()) as T;

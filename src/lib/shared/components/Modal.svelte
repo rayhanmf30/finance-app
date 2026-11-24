@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { i18n } from '#lib/shared/i18n/i18n.service.svelte';
 
 	interface Props {
 		title: string;
@@ -33,7 +34,7 @@
 			<h2 class="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
 			<button
 				type="button"
-				aria-label="Tutup"
+				aria-label={i18n.t('common.close')}
 				class="cursor-pointer rounded-lg p-1 text-slate-400 dark:text-metadark hover:bg-slate-100 dark:bg-boxdark-2 dark:hover:bg-boxdark hover:text-slate-600 dark:text-slate-300"
 				onclick={onclose}
 			>

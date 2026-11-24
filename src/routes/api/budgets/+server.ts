@@ -13,10 +13,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const userId = requireUserId(locals);
 	const body = await request.json();
-	const { categoryId, periodType, limitAmount, warningThresholdPct } = body ?? {};
+	const { categoryIds, periodType, limitAmount, warningThresholdPct } = body ?? {};
 
 	if (!['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(periodType)) {
-		throw error(400, 'Tipe periode tidak valid.');
+		throw error(400, { message: 'Tipe periode tidak valid.', code: 'E_BAD_PERIOD' });
 	}
 
 	const limit = Number(limitAmount);
@@ -29,18 +29,41 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(400, 'Threshold peringatan harus 1-100.');
 	}
 
-	if (categoryId) {
-		const owned = await db`
-			SELECT 1 FROM categories WHERE id = ${categoryId} AND (user_id IS NULL OR user_id = ${userId})
-		`;
-		if (owned.length === 0) throw error(400, 'Kategori tidak ditemukan.');
+	// Multi-kategori: budget tanpa kategori = global (semua pengeluaran).
+	const ids: string[] = Array.isArray(categoryIds) ? categoryIds.filter((v: unknown) => typeof v === 'string' && v !== '') : [];
+	const uniqueIds = [...new Set(ids)];
+	if (uniqueIds.length > 10) {
+		throw error(400, { message: 'Maksimal 10 kategori per budget.', code: 'E_TOO_MANY_CATEGORIES' });
 	}
 
-	const rows = await db`
-		INSERT INTO budgets (user_id, category_id, period_type, limit_amount, warning_threshold_pct)
-		VALUES (${userId}, ${categoryId ?? null}, ${periodType}, ${limit}, ${threshold})
-		RETURNING id
-	`;
+	return db.begin(async (tx) => {
+		if (uniqueIds.length > 0) {
+			const owned = await tx<{ id: string }[]>`
+				SELECT id FROM categories
+				WHERE id IN ${uniqueIds}
+					AND type = 'EXPENSE'
+					AND (user_id IS NULL OR user_id = ${userId})
+			`;
+			if (owned.length !== uniqueIds.length) {
+				throw error(400, { message: 'Satu atau lebih kategori tidak ditemukan atau bukan kategori pengeluaran.', code: 'E_CATEGORY_NOT_FOUND' });
+			}
+		}
 
-	return json({ id: rows[0].id }, { status: 201 });
+		const rows = await tx`
+			INSERT INTO budgets (user_id, period_type, limit_amount, warning_threshold_pct)
+			VALUES (${userId}, ${periodType}, ${limit}, ${threshold})
+			RETURNING id
+		`;
+		const budgetId = rows[0].id as string;
+
+		if (uniqueIds.length > 0) {
+			await tx`
+				INSERT INTO budget_categories (budget_id, category_id)
+				SELECT ${budgetId}, id FROM categories WHERE id IN ${uniqueIds}
+				ON CONFLICT (budget_id, category_id) DO NOTHING
+			`;
+		}
+
+		return json({ id: budgetId }, { status: 201 });
+	});
 };

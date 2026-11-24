@@ -14,14 +14,20 @@ interface AdminCategoryRow {
 	child_count: number;
 }
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	requireAdmin(locals);
+
+	const query = (url.searchParams.get('q') ?? '').trim();
+	const pattern = `%${query}%`;
 
 	const rows = await db<AdminCategoryRow[]>`
 		SELECT c.id, c.user_id, c.parent_id, c.name, c.type, c.color,
 			(SELECT count(*) FROM transactions t WHERE t.category_id = c.id)::int AS transaction_count,
 			(SELECT count(*) FROM categories ch WHERE ch.parent_id = c.id)::int AS child_count
 		FROM categories c
+		WHERE ${query} = ''
+			OR c.name ILIKE ${pattern}
+			OR c.type ILIKE ${pattern}
 		ORDER BY c.user_id NULLS FIRST, c.name
 	`;
 
