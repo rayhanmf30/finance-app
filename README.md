@@ -31,6 +31,7 @@ npm run dev
 File `server/migrations/` berisi migrasi Inkremental untuk database yang sudah berjalan (Supabase/Vercel). Terapkan manual via SQL editor Supabase atau `psql`:
 
 - `002_transaction_items_discount.sql` — kolom `discount DECIMAL(15,2) NOT NULL DEFAULT 0` pada tabel `transaction_items` (untuk diskon per barang hasil scan resi).
+- `002_user_wallet_types.sql` — migrasi **tipe dompet per user**: `UNIQUE (user_id, code)` pada `wallet_types`, `wallets.type` menjadi FK ke `wallet_types(id)`, `categories.user_id` boleh diset (kategori milik user) dengan indeks aktif, dan semua user demo/existing diangkat ke role `admin`.
 - `003_transactions_category_check.sql` — perbaikan constraint `transactions`: kategori wajib kosong hanya untuk TRANSFER; INCOME/EXPENSE kini boleh tanpa kategori (constraint lama keliru mewajibkannya).
 
 Untuk database baru cukup jalankan `server/schema.sql` yang sudah termasuk semua perbaikan ini.
@@ -59,6 +60,12 @@ Untuk database baru cukup jalankan `server/schema.sql` yang sudah termasuk semua
 | `/api/admin/wallet-types/[code]` | PATCH/DELETE | (Admin) Edit label/aktif & hapus tipe dompet |
 | `/api/admin/wallets` | GET/POST | (Admin) Semua dompet milik pengguna (pemilik, tipe, saldo, pemakaian); buat dompet untuk pengguna |
 | `/api/admin/wallets/[id]` | PATCH/DELETE | (Admin) Edit nama/tipe/mata uang/ikut-total & hapus dompet (dijaga dari pemakaian transaksi) |
+| `/api/my/categories` | GET/POST | Kategori **milik user login** (beserta jumlah pakai); tambah kategori pribadi (opsional kategori induk miliknya) |
+| `/api/my/categories/[id]` | PATCH/DELETE | Edit nama/tipe & hapus kategori milik user (ditolak 409 bila dipakai transaksi/sub-kategori) |
+| `/api/my/wallet-types` | GET/POST | Tipe dompet milik user + global (kode unik per user); tambah tipe pribadi (kode berasal dari label bila kosong) |
+| `/api/my/wallet-types/[id]` | PATCH/DELETE | Edit kode/label/aktif & hapus tipe milik user (ditolak 409 bila dipakai dompet) |
+| `/api/wallets` | POST | Tambah dompet milik user (saldo awal >= 0, tipe di-resolve milik user → global) |
+| `/api/wallets/[id]` | PATCH/DELETE | Edit nama/tipe/ikut-total & hapus dompet milik user (ditolak 409 bila dipakai transaksi) |
 
 ### Deployment: Supabase + Vercel
 
@@ -112,6 +119,16 @@ Jika password mengandung karakter khusus (`@`, `#`, `%`, dll.) tidak perlu di-en
 - Seluruh endpoint `/api/*` (kecuali auth & health) mewajibkan login (`requireUserId` → 401) dan memfilter query per `user_id`, sehingga transaksi dompet & budget **terpisah penuh antar user**.
 - Halaman `/login` dan `/register`; halaman privat diarahkan ke `/login` bila belum login; tombol **Keluar** di navigasi.
 
+### Pengaturan Saya (per User)
+
+Selain kategori/tipe dompet/dompet global yang dikelola admin, tiap user kini punya halaman **`/pengaturan`** (menu sidebar **Pengaturan** berupa tree: Kategori Saya / Tipe Dompet Saya / Dompet Saya) untuk mengelola datanya sendiri:
+
+- **Kategori Saya** — kategori pribadi (INCOME/EXPENSE, opsional kategori induk miliknya). Transaksi dapat memakai kategori sistem maupun milik sendiri; resolver tipe dompet memilih milik user **lebih dulu** daripada global.
+- **Tipe Dompet Saya** — tipe dompet pribadi dengan kode unik pada scope user (kode berasal dari label; suffix `_2`, `_3`, … bila bentrok dengan tipe global/milik sendiri). Baris global milik admin tampil dengan badge **Sistem (read-only)**. Tipe dapat dinonaktifkan/dihapus (ditolak 409 bila masih dipakai dompet).
+- **Dompet Saya** — CRUD dompet milik sendiri: nama, tipe (milik + global aktif), saldo awal (tambah), dan penanda ikut-dihitung-total. Penghapusan ditolak 409 bila masih dipakai transaksi.
+
+Semua aturan UI baku diikuti: pencarian via tombol Cari (header tabel tetap), skeleton saat memuat, aksi tabel berikon (kebab menu bila > 3), konfirmasi sebelum hapus, loading pada tombol proses, dan modal tetap terbuka agar input tidak hilang bila gagal.
+
 ### Panel Admin
 
 Akses `/admin` terbatas untuk user ber-role `admin`. Di sidebar, menu **Admin** kini berupa **tree** yang dapat dibuka/tutup dengan empat sub-menu: **Akun** (`/admin?tab=users`), **Kategori** (`/admin?tab=categories`), **Tipe Dompet** (`/admin?tab=walletTypes`), dan **Dompet** (`/admin?tab=wallets`) — tab aktif tercermin pada query param URL. Role admin diberikan bila:
@@ -123,7 +140,7 @@ Kemampuan panel admin:
 
 - **Manajemen akun** — daftar semua akun (cari nama/email via tombol Cari, statistik transaksi/dompet/budget), **tambah akun** (nama, email, password di-hash, role — dompet awal "Dompet Utama" (Bank) dibuat otomatis), **edit akun** (nama/email; password diubah lewat "Ganti Password"), **hapus akun** dengan konfirmasi (seluruh data terkait ikut terhapus via CASCADE; akun sendiri tidak bisa dihapus), **blokir** akun dengan alasan (user terblokir tidak bisa login maupun memakai API — 403), buka blokir, jadikan/cabut role admin. Admin tidak bisa memblokir atau menurunkan dirinya sendiri (anti-lockout).
 - **Manajemen kategori** — lihat semua kategori (sistem + milik user) beserta jumlah pemakaian, tambah/edit **kategori sistem** (nama, tipe, warna, kategori induk), hapus kategori sistem (ditolak 409 bila masih dipakai transaksi, sub-kategori, budget, atau item transaksi).
-- **Manajemen tipe dompet** — tipe dompet kini dinamis di tabel `wallet_types` (awal: Tunai/Bank/E-Wallet/Kartu Kredit). Admin dapat menambah, mengubah label, mengaktifkan/menonaktifkan, serta menghapus tipe (ditolak 409 bila masih dipakai dompet). Kolom `wallets.type` kini FK ke `wallet_types(code)`. **Pemilih dompet** pada form transaksi otomatis mengelompokkan dompet per tipe (optgroup) memakai label terkini dari tabel `wallet_types` di admin.
+- **Manajemen tipe dompet** — tipe dompet kini dinamis di tabel `wallet_types` (awal: Tunai/Bank/E-Wallet/Kartu Kredit). Admin dapat menambah, mengubah label, mengaktifkan/menonaktifkan, serta menghapus tipe (ditolak 409 bila masih dipakai dompet). Tipe dompet milik pengguna juga dikelola lewat menu **Pengaturan** di halaman `/pengaturan`; resolver memilih milik user lebih dulu daripada global. Kolom `wallets.type` kini FK ke `wallet_types(id)`. **Pemilih dompet** pada form transaksi otomatis mengelompokkan dompet per tipe (optgroup) memakai label terkini dari tabel `wallet_types` di admin.
 - **Manajemen dompet (tab Dompet)** — admin dapat melihat **seluruh tabel `wallets`** milik semua pengguna (pemilik, tipe, saldo, mata uang, jumlah transaksi), **membuat** dompet untuk pengguna mana pun (dengan saldo awal), **mengubah** nama/tipe/mata uang/penanda ikut-dihitung-total, dan **menghapus** dompet (ditolak 409 bila masih dipakai transaksi). Saldo berjalan tetap dikelola lewat transaksi agar selalu konsisten dengan riwayat.
 
 - **`transactions.ts`** — penyimpanan atomik (`db.begin`): `SELECT ... FOR UPDATE` pada dompet, insert transaksi, update saldo per tipe (INCOME/EXPENSE/TRANSFER), lalu **warning engine** budget.
