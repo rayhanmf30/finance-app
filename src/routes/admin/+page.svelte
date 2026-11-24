@@ -104,10 +104,6 @@
 		}
 	}
 
-	function switchTab(tab: Tab) {
-		void goto(`/admin?tab=${tab}`);
-	}
-
 	// Muat ulang data tiap tab berubah (termasuk saat dibuka dari tree sidebar).
 	$effect(() => {
 		if (!authService.isAdmin) {
@@ -335,27 +331,18 @@
 
 <svelte:head><title>Admin — FinanceApp</title></svelte:head>
 
-<div class="mx-auto w-full max-w-5xl p-4 sm:p-6">
-	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">Panel Admin</h1>
-		<div class="flex flex-wrap gap-1 rounded-lg bg-slate-100 dark:bg-boxdark-2 p-1">
-			{#each tabs as tab (tab.id)}
-				<button
-					type="button"
-					class="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors {activeTab === tab.id ? 'bg-white dark:bg-boxdark-2 text-indigo-700 shadow' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white dark:hover:text-white'}"
-					onclick={() => switchTab(tab.id)}
-				>
-					{tab.label}
-				</button>
-			{/each}
-		</div>
+<div class="space-y-6">
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<h1 class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+			Panel Admin — {tabs.find((t) => t.id === activeTab)?.label ?? 'Akun'}
+		</h1>
 	</div>
 
 	{#if notice}
-		<div class="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{notice}</div>
+		<div class="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{notice}</div>
 	{/if}
 	{#if error}
-		<div class="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+		<div class="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
 	{/if}
 
 	{#if loading}
