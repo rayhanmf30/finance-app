@@ -184,6 +184,122 @@ export async function createTransaction(userId: string, input: CreateTransaction
 	});
 }
 
+/**
+ * Ubah transaksi di tempat (UPDATE sejati) — id dan created_at tetap.
+ * Saldo dompet direkonsiliasi harmonis: efek saldo transaksi lama dibalik,
+ * efek saldo transaksi baru diterapkan, semuanya dalam satu db.begin().
+ */
+export async function updateTransaction(userId: string, id: string, input: CreateTransactionInput) {
+	validateInput(input);
+	const amount = Number(input.amount);
+	const date = new Date(input.transactionDate);
+
+	return db.begin(async (tx) => {
+		// Kunci baris transaksi lama untuk menghindari race dengan operasi lain.
+		const rows = await tx<TransactionRow[]>`
+			SELECT id, wallet_id, destination_wallet_id, category_id, type, amount, transaction_date, note
+			FROM transactions
+			WHERE id = ${id} AND user_id = ${userId}
+			FOR UPDATE
+		`;
+		if (rows.length === 0) error(404, 'Transaksi tidak ditemukan.');
+		const old = rows[0];
+		const oldAmount = Number(old.amount);
+
+		// Kunci semua dompet yang terlibat (lama + baru) milik user ini.
+		const involved = Array.from(
+			new Set(
+				[
+					input.walletId,
+					input.type === 'TRANSFER' ? input.destinationWalletId! : null,
+					old.wallet_id,
+					old.destination_wallet_id
+				].filter((wid): wid is string => Boolean(wid))
+			)
+		);
+		const locked = await tx`
+			SELECT id FROM wallets
+			WHERE user_id = ${userId} AND id IN ${tx(involved)}
+			ORDER BY id
+			FOR UPDATE
+		`;
+		if (locked.length !== involved.length) {
+			error(400, 'Dompet tidak ditemukan.');
+		}
+
+		// Rekonsiliasi saldo: kumpulkan delta per dompet (kunci gabungan lama + baru,
+		// jadi dompet yang sama muncul di lama & baru otomatis saling meneutral).
+		const deltas = new Map<string, number>();
+		const add = (walletId: string, delta: number) =>
+			deltas.set(walletId, (deltas.get(walletId) ?? 0) + delta);
+
+		// 1) Balikkan efek transaksi lama.
+		if (old.type === 'INCOME') {
+			add(old.wallet_id, -oldAmount);
+		} else if (old.type === 'EXPENSE') {
+			add(old.wallet_id, oldAmount);
+		} else {
+			add(old.wallet_id, oldAmount);
+			add(old.destination_wallet_id!, -oldAmount);
+		}
+
+		// 2) Terapkan efek transaksi baru.
+		if (input.type === 'INCOME') {
+			add(input.walletId, amount);
+		} else if (input.type === 'EXPENSE') {
+			add(input.walletId, -amount);
+		} else {
+			add(input.walletId, -amount);
+			add(input.destinationWalletId!, amount);
+		}
+
+		for (const [walletId, delta] of deltas) {
+			if (delta === 0) continue;
+			await tx`UPDATE wallets SET current_balance = current_balance + ${delta} WHERE id = ${walletId}`;
+		}
+
+		// 3) Perbarui baris transaksi (id & created_at tidak disentuh; updated_at via trigger).
+		const updated = await tx<TransactionRow[]>`
+			UPDATE transactions SET
+				wallet_id = ${input.walletId},
+				destination_wallet_id = ${input.type === 'TRANSFER' ? input.destinationWalletId! : null},
+				category_id = ${input.type === 'TRANSFER' ? null : input.categoryId ?? null},
+				type = ${input.type},
+				amount = ${amount},
+				transaction_date = ${date},
+				note = ${input.note ?? null}
+			WHERE id = ${id} AND user_id = ${userId}
+			RETURNING id, wallet_id, destination_wallet_id, category_id, type, amount, transaction_date, note
+		`;
+
+		// 4) Rincian barang: bila body membawa items, ganti seluruh rincian;
+		// bila tidak, rincian lama dibiarkan utuh.
+		if (input.items) {
+			await tx`DELETE FROM transaction_items WHERE transaction_id = ${id}`;
+			if (input.items.length > 0) {
+				await tx`
+					INSERT INTO transaction_items
+					${tx(
+						input.items.map((item) => ({
+							transaction_id: id,
+							name: item.name.trim(),
+							quantity: Number(item.quantity),
+							unit_price: Number(item.unitPrice),
+							discount: Number(item.discount ?? 0)
+						}))
+					)}
+				`;
+			}
+		}
+
+		if (input.type === 'EXPENSE') {
+			await evaluateBudgets(tx, userId, input.categoryId ?? null, date);
+		}
+
+		return mapTransaction(updated[0]);
+	});
+}
+
 /** Satu transaksi + rincian barangnya. */
 export async function getTransaction(userId: string, id: string) {
 	const rows = await db<TransactionRow[]>`

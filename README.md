@@ -39,7 +39,7 @@ File `server/migrations/` berisi migrasi Inkremental untuk database yang sudah b
 | `/api/wallets` | GET | Daftar dompet + saldo terkini |
 | `/api/categories` | GET | Kategori sistem + milik user |
 | `/api/transactions` | GET/POST | Riwayat per bulan (`?month=YYYY-MM&query=`) & simpan transaksi (termasuk rincian barang ke `transaction_items`) |
-| `/api/transactions/[id]` | GET/PUT/DELETE | Detail + rincian barang; ubah (re-create atomik, items lama dipertahankan bila tidak dikirim); hapus dengan pembalikan saldo |
+| `/api/transactions/[id]` | GET/PUT/DELETE | Detail + rincian barang; **ubah di tempat (UPDATE)** — id & created_at tetap, saldo dompet direkonsiliasi (items lama dipertahankan bila tidak dikirim); hapus dengan pembalikan saldo |
 | `/api/dashboard/summary` | GET | Cashflow, breakdown kategori, total saldo, status budget |
 | `/api/budgets` | GET/POST | Status budget real-time & buat aturan budget |
 | `/api/receipts/parse` | POST | Ekstraksi struk via AI Groq (multipart field `receipt`) — fallback mock bila `GROQ_API_KEY` kosong |
