@@ -60,10 +60,14 @@ export interface Wallet {
 	id: string;
 	name: string;
 	type: WalletType;
+	/** Kode tipe dari tabel wallet_types (untuk resolve tipe milik user/global). */
+	typeCode?: string;
 	/** Label tipe dari tabel wallet_types (dikelola admin). */
 	typeLabel?: string;
 	currency: string;
 	currentBalance: number;
+	/** Ikut dihitung dalam total saldo dashboard. */
+	isIncludedInTotal?: boolean;
 }
 
 export interface Category {

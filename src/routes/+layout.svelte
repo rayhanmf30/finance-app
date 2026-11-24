@@ -47,7 +47,7 @@
 	interface NavLink {
 		href: string;
 		labelKey: string;
-		icon: 'dashboard' | 'transactions' | 'budget' | 'admin';
+		icon: 'dashboard' | 'transactions' | 'budget' | 'admin' | 'settings';
 	}
 
 	const links: NavLink[] = [
@@ -71,6 +71,21 @@
 
 	const isAdminPage = $derived(page.url.pathname.startsWith('/admin'));
 
+	// ---- Tree Pengaturan (per-pengguna) ----
+	const settingsTabs: { id: string; labelKey: string }[] = [
+		{ id: 'categories', labelKey: 'set.tab.categories' },
+		{ id: 'walletTypes', labelKey: 'set.tab.walletTypes' },
+		{ id: 'wallets', labelKey: 'set.tab.wallets' }
+	];
+
+	const currentSettingsTab = $derived(
+		settingsTabs.find((t) => t.id === page.url.searchParams.get('tab'))?.id ?? 'categories'
+	);
+
+	const isSettingsPage = $derived(page.url.pathname.startsWith('/pengaturan'));
+
+	let settingsOpen = $state(true);
+
 	const active = (href: string) =>
 		href === '/'
 			? page.url.pathname === '/'
@@ -80,7 +95,8 @@
 		dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
 		transactions: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l2.3 2.3a1 1 0 00.7.3H17a1 1 0 00.7-.3L20 10M9 19a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z',
 		budget: 'M12 21a9 9 0 110-18 9 9 0 010 18zm0-3a6 6 0 100-12 6 6 0 000 12zm0-3a3 3 0 100-6 3 3 0 000 6z',
-		admin: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
+		admin: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+		settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z'
 	};
 
 	let adminOpen = $state(true);
@@ -89,9 +105,11 @@
 	const pageTitle = $derived(
 		isAdminPage
 			? `${i18n.t('nav.admin')} — ${i18n.t(adminTabs.find((t) => t.id === currentTab)?.labelKey ?? 'admin.tab.users')}`
-			: activeNavLink
-				? i18n.t(activeNavLink.labelKey)
-				: ''
+			: isSettingsPage
+				? `${i18n.t('nav.settings')} — ${i18n.t(settingsTabs.find((t) => t.id === currentSettingsTab)?.labelKey ?? 'set.tab.categories')}`
+				: activeNavLink
+					? i18n.t(activeNavLink.labelKey)
+					: ''
 	);
 </script>
 
@@ -149,6 +167,48 @@
 							{i18n.t(link.labelKey)}
 						</a>
 					{/each}
+
+					<!-- Tree Pengaturan: kategori, tipe dompet & dompet milik pengguna login -->
+					<div>
+						<button
+							type="button"
+							class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {isSettingsPage
+								? 'bg-indigo-600 text-white'
+								: 'text-slate-600 hover:bg-slate-100 dark:text-metadark dark:hover:bg-boxdark-2 dark:hover:text-white'}"
+							onclick={() => {
+								settingsOpen = !settingsOpen;
+								if (!isSettingsPage) goto('/pengaturan?tab=categories');
+								else if (!settingsOpen && isSettingsPage) sidebarOpen = false;
+							}}
+						>
+							<svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+								<path stroke-linecap="round" stroke-linejoin="round" d={initialValues.settings} />
+							</svg>
+							<span class="flex-1 text-left">{i18n.t('nav.settings')}</span>
+							<svg
+								class="h-4 w-4 transition-transform {settingsOpen ? 'rotate-90' : ''}"
+								fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+							</svg>
+						</button>
+
+						{#if settingsOpen}
+							<div class="ml-8 mt-1 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-700">
+								{#each settingsTabs as tab (tab.id)}
+									<a
+										href="/pengaturan?tab={tab.id}"
+										onclick={() => (sidebarOpen = false)}
+										class="block rounded-md px-3 py-1.5 text-sm transition-colors {isSettingsPage && currentSettingsTab === tab.id
+											? 'bg-indigo-50 font-semibold text-indigo-700 dark:bg-boxdark-2 dark:text-white'
+											: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:text-metadark dark:hover:bg-boxdark-2 dark:hover:text-white'}"
+									>
+										{i18n.t(tab.labelKey)}
+									</a>
+								{/each}
+							</div>
+						{/if}
+					</div>
 
 					{#if authService.isAdmin}
 						<div>
