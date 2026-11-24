@@ -91,7 +91,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		// Dompet awal "Dompet Utama" (tipe Bank) agar akun baru langsung bisa mencatat transaksi.
 		await db`
 			INSERT INTO wallets (user_id, name, type, currency, current_balance, is_included_in_total)
-			VALUES (${user.id}, 'Dompet Utama', 'BANK', ${user.default_currency}, 0, TRUE)
+			VALUES (${user.id}, 'Dompet Utama', (SELECT id FROM wallet_types WHERE code = 'BANK' AND user_id IS NULL), ${user.default_currency}, 0, TRUE)
 		`;
 
 		return json({ id: user.id, name: user.name, email: user.email, role: user.role }, { status: 201 });

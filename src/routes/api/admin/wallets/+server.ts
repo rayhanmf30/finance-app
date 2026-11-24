@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { db } from '#lib/server/db';
 import { requireAdmin } from '#lib/server/session';
+import { resolveWalletTypeId } from '#lib/server/wallets';
 import type { RequestHandler } from './$types';
 
 interface AdminWalletRow {
@@ -32,7 +33,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			 WHERE t.wallet_id = w.id OR t.destination_wallet_id = w.id)::int AS transaction_count
 		FROM wallets w
 		JOIN users u ON u.id = w.user_id
-		LEFT JOIN wallet_types wt ON wt.code = w.type
+		LEFT JOIN wallet_types wt ON wt.id = w.type
 		WHERE ${query} = ''
 			OR w.name ILIKE ${pattern}
 			OR u.name ILIKE ${pattern}
@@ -89,13 +90,11 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const user = await db`SELECT id FROM users WHERE id = ${userId}`;
 	if (user.length === 0) throw error(404, 'Pengguna tidak ditemukan.');
 
-	const walletType = await db`SELECT code, is_active FROM wallet_types WHERE code = ${type}`;
-	if (walletType.length === 0) throw error(404, `Tipe dompet "${type}" tidak ditemukan.`);
-	if (!walletType[0].is_active) throw error(400, `Tipe dompet "${type}" sedang nonaktif.`);
+	const walletType = await resolveWalletTypeId(db, userId, type);
 
 	const [created] = await db<{ id: string }[]>`
 		INSERT INTO wallets (user_id, name, type, currency, current_balance)
-		VALUES (${userId}, ${name}, ${type}, ${currency}, ${initialBalance})
+		VALUES (${userId}, ${name}, ${walletType.id}, ${currency}, ${initialBalance})
 		RETURNING id
 	`;
 

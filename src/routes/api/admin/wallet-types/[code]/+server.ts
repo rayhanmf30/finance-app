@@ -39,7 +39,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const rows = await db.unsafe<WalletTypeRow[]>(
 		`UPDATE wallet_types
 		 SET ${fields.join(', ')}
-		 WHERE code = $${values.length}
+		 WHERE code = $${values.length} AND user_id IS NULL -- hanya tipe global
 		 RETURNING code, label, is_active`,
 		values
 	);
@@ -52,12 +52,16 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	requireAdmin(locals);
 
-	const used = await db`SELECT 1 FROM wallets WHERE type = ${params.code} LIMIT 1`;
+	const used = await db`
+		SELECT 1 FROM wallets
+		WHERE type = (SELECT id FROM wallet_types WHERE code = ${params.code} AND user_id IS NULL)
+		LIMIT 1
+	`;
 	if (used.length > 0) {
 		throw error(409, 'Tipe dompet masih dipakai oleh beberapa dompet dan tidak bisa dihapus.');
 	}
 
-	const rows = await db`DELETE FROM wallet_types WHERE code = ${params.code} RETURNING code`;
+	const rows = await db`DELETE FROM wallet_types WHERE code = ${params.code} AND user_id IS NULL RETURNING code`;
 	if (rows.length === 0) throw error(404, 'Tipe dompet tidak ditemukan.');
 
 	return new Response(null, { status: 204 });

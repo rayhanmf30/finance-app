@@ -18,11 +18,12 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	const rows = await db<WalletTypeRow[]>`
 		SELECT wt.code, wt.label, wt.is_active,
-			(SELECT count(*) FROM wallets w WHERE w.type = wt.code)::int AS wallet_count
+			(SELECT count(*) FROM wallets w WHERE w.type = wt.id)::int AS wallet_count
 		FROM wallet_types wt
-		WHERE ${query} = ''
-			OR wt.code ILIKE ${pattern}
-			OR wt.label ILIKE ${pattern}
+		WHERE wt.user_id IS NULL -- admin hanya mengelola tipe global
+			AND (${query} = ''
+				OR wt.code ILIKE ${pattern}
+				OR wt.label ILIKE ${pattern})
 		ORDER BY wt.code
 	`;
 

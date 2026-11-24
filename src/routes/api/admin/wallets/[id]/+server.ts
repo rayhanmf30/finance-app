@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { db } from '#lib/server/db';
 import { requireAdmin } from '#lib/server/session';
+import { resolveWalletTypeId } from '#lib/server/wallets';
 import type { RequestHandler } from './$types';
 
 interface AdminWalletRow {
@@ -35,11 +36,12 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	}
 	if (typeof body.type === 'string') {
 		const type = body.type.trim();
-		const active = await db`SELECT is_active FROM wallet_types WHERE code = ${type}`;
-		if (active.length === 0) throw error(404, `Tipe dompet "${type}" tidak ditemukan.`);
-		if (!active[0].is_active) throw error(400, `Tipe dompet "${type}" sedang nonaktif.`);
-		values.push(type);
-		fields.push(`type = $${values.length}`);
+		// type kini UUID: resolve kode -> id milik pemilik dompet (atau global).
+		const owner = await db<{ user_id: string }[]>`SELECT user_id FROM wallets WHERE id = ${params.id}::uuid`;
+		if (owner.length === 0) throw error(404, 'Dompet tidak ditemukan.');
+		const walletType = await resolveWalletTypeId(db, owner[0].user_id, type);
+		values.push(walletType.id);
+		fields.push(`type = $${values.length}::uuid`);
 	}
 	if (typeof body.currency === 'string') {
 		const currency = body.currency.trim().toUpperCase();
